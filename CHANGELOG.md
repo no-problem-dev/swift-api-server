@@ -44,8 +44,9 @@
 ### ドキュメント
 
 - README.md（日本語・英語）
-- VAPOR_ABSTRACTION_DESIGN.md（設計ドキュメント）
+- DESIGN.md（設計ドキュメント）
 - DocC ドキュメント
+- CHANGELOG.md（Keep a Changelog 形式）
 - RELEASE_PROCESS.md
 
 ### テスト
