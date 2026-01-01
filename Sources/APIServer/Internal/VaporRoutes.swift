@@ -2,8 +2,8 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// VaporベースのRouteRegistrar実装
-public struct VaporRouteRegistrar: RouteRegistrar, @unchecked Sendable {
+/// Vapor ベースの Routes 実装
+public struct VaporRoutes: Routes, @unchecked Sendable {
     let routes: RoutesBuilder
 
     init(app: Application) {
@@ -105,15 +105,14 @@ public struct VaporRouteRegistrar: RouteRegistrar, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
-    public func mount<G: APIContractGroup, H: APIGroupHandler>(
-        _ group: G.Type,
-        handler: H
-    ) -> MountedGroup<G, H> where H.Group == G {
-        routes.mount(group, handler: handler)
+    public func mount<S: APIService>(
+        _ service: S
+    ) -> APIRoutes<S.Group, S> {
+        routes.mount(service)
     }
 }
 
-/// VaporベースのRouteGroup実装
+/// Vapor ベースの RouteGroup 実装
 public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
     let routes: RoutesBuilder
 
@@ -208,10 +207,9 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
-    public func mount<G: APIContractGroup, H: APIGroupHandler>(
-        _ group: G.Type,
-        handler: H
-    ) -> MountedGroup<G, H> where H.Group == G {
-        routes.mount(group, handler: handler)
+    public func mount<S: APIService>(
+        _ service: S
+    ) -> APIRoutes<S.Group, S> {
+        routes.mount(service)
     }
 }

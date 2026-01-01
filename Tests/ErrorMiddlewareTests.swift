@@ -80,7 +80,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = TestAPIHandlerImpl()
+        let handler = TestAPIServiceImpl()
 
         app.mount(TestAPI.self, handler: handler)
             .register(TestAPI.CreateItem.self) { input, ctx in
@@ -125,26 +125,26 @@ final class ErrorMiddlewareTests: XCTestCase {
 
 // MARK: - Error Throwing Handler
 
-private final class ErrorThrowingHandler: TestAPIHandler, @unchecked Sendable {
+private final class ErrorThrowingHandler: TestAPIService, @unchecked Sendable {
     let error: any Error
 
     init(error: any Error) {
         self.error = error
     }
 
-    func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+    func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         throw error
     }
 
-    func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         throw error
     }
 
-    func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         throw error
     }
 
-    func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {
+    func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {
         throw error
     }
 }
