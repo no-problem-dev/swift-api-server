@@ -1,4 +1,4 @@
-import Vapor
+internal import Vapor
 import APIContract
 
 /// 認証ミドルウェア
@@ -6,23 +6,15 @@ import APIContract
 /// `AuthenticationProvider`を使用してBearerトークンを検証し、
 /// 認証済みユーザーをリクエストに設定します。
 ///
-/// 認証が失敗しても次のハンドラーに処理を渡します。
-/// 個別エンドポイントの`AuthRequirement`に基づいて
-/// `buildHandlerContext`が認証チェックを行います。
-///
-/// ## 使用例
-/// ```swift
-/// let authProvider = FirebaseAuthProvider(authClient: authClient)
-/// app.middleware.use(AuthMiddleware(provider: authProvider))
-/// ```
-public struct AuthMiddleware<Provider: AuthenticationProvider>: AsyncMiddleware {
+/// 使用方法: `server.useAuth(provider)` を呼び出してください。
+struct AuthMiddleware<Provider: AuthenticationProvider>: AsyncMiddleware {
     private let provider: Provider
 
-    public init(provider: Provider) {
+    init(provider: Provider) {
         self.provider = provider
     }
 
-    public func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
+    func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         // Authorizationヘッダーからトークンを抽出
         if let authHeader = request.headers[.authorization].first,
            authHeader.lowercased().hasPrefix("bearer ") {

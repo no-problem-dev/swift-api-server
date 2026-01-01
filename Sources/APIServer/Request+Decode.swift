@@ -1,4 +1,5 @@
-import Vapor
+import Foundation
+internal import Vapor
 import APIContract
 
 // MARK: - Request Decoding
@@ -107,13 +108,11 @@ extension Request {
 
 // MARK: - Authenticated User
 
-/// 認証済みユーザーを表す型
-///
-/// 認証ミドルウェアで `request.auth.login(AuthenticatedUser(id: userId))` を呼び出して設定します。
-public struct AuthenticatedUser: Authenticatable, Sendable {
-    public let id: String
+/// 認証済みユーザーを表す型（内部使用）
+struct AuthenticatedUser: Authenticatable, Sendable {
+    let id: String
 
-    public init(id: String) {
+    init(id: String) {
         self.id = id
     }
 }
@@ -122,7 +121,7 @@ public struct AuthenticatedUser: Authenticatable, Sendable {
 
 extension JSONDecoder {
     /// API用のデフォルトJSONDecoder
-    public static var apiDefault: JSONDecoder {
+    static var apiDefault: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

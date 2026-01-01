@@ -7,7 +7,14 @@
 
 ## [未リリース]
 
-なし
+### 変更
+
+- **Vapor隠蔽**: `@_implementationOnly import Vapor` により利用側で `import Vapor` が不要に
+  - `VaporServerApplication.app` を `internal` に変更
+  - `APIContractErrorMiddleware` を `internal` に変更（`server.useErrorMiddleware()` を使用）
+  - `AuthMiddleware` を `internal` に変更（`server.useAuth()` を使用）
+  - `AuthenticatedUser` を `internal` に変更
+  - `Application` / `RoutesBuilder` の public extension を削除
 
 ## [1.0.0] - 2025-01-01
 
