@@ -1,0 +1,15 @@
+{
+    "theme": {
+        "color": {
+            "standard-blue": "#0066cc"
+        },
+        "typography": {
+            "html-font": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        }
+    },
+    "features": {
+        "quickNavigation": {
+            "enable": true
+        }
+    }
+}
