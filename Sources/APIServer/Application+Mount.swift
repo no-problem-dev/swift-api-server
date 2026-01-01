@@ -20,7 +20,8 @@ extension Application {
         _ group: Group.Type,
         handler: Handler
     ) -> MountedGroup<Group, Handler> where Handler.Group == Group {
-        let routeGroup = self.grouped(PathComponent(stringLiteral: group.basePath))
+        let pathComponents = group.basePath.toPathComponents
+        let routeGroup = self.grouped(pathComponents)
         return MountedGroup(routes: routeGroup, handler: handler)
     }
 }
@@ -36,7 +37,8 @@ extension RoutesBuilder {
         _ group: Group.Type,
         handler: Handler
     ) -> MountedGroup<Group, Handler> where Handler.Group == Group {
-        let routeGroup = self.grouped(PathComponent(stringLiteral: group.basePath))
+        let pathComponents = group.basePath.toPathComponents
+        let routeGroup = self.grouped(pathComponents)
         return MountedGroup(routes: routeGroup, handler: handler)
     }
 
