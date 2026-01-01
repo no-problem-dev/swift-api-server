@@ -183,7 +183,7 @@ final class DecodeTests: XCTestCase {
 
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = ProtectedAPIHandlerImpl()
+        let handler = ProtectedAPIServiceImpl()
 
         app.mount(ProtectedAPI.self, handler: handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
@@ -198,67 +198,67 @@ final class DecodeTests: XCTestCase {
 
 // MARK: - Capture Handlers
 
-private final class CaptureHandler: TestAPIHandler, @unchecked Sendable {
-    func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+private final class CaptureHandler: TestAPIService, @unchecked Sendable {
+    func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         []
     }
 
-    func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: input.itemId, name: "Test")
     }
 
-    func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: "new", name: input.body.name)
     }
 
-    func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {}
+    func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {}
 }
 
-private final class QueryCapturingHandler: TestAPIHandler, @unchecked Sendable {
+private final class QueryCapturingHandler: TestAPIService, @unchecked Sendable {
     var lastLimit: Int?
     var lastOffset: Int?
 
-    func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+    func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         lastLimit = input.limit
         lastOffset = input.offset
         return []
     }
 
-    func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: input.itemId, name: "Test")
     }
 
-    func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: "new", name: input.body.name)
     }
 
-    func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {}
+    func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {}
 }
 
-private final class BodyCapturingHandler: TestAPIHandler, @unchecked Sendable {
+private final class BodyCapturingHandler: TestAPIService, @unchecked Sendable {
     var lastName: String?
 
-    func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+    func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         []
     }
 
-    func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: input.itemId, name: "Test")
     }
 
-    func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         lastName = input.body.name
         return TestItem(id: "new", name: input.body.name)
     }
 
-    func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {}
+    func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {}
 }
 
-private final class ContextCapturingHandler: TestAPIHandler, @unchecked Sendable {
+private final class ContextCapturingHandler: TestAPIService, @unchecked Sendable {
     var wasAnonymous: Bool = true
     var authenticatedUserId: String?
 
-    func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+    func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         switch context {
         case .anonymous:
             wasAnonymous = true
@@ -270,15 +270,15 @@ private final class ContextCapturingHandler: TestAPIHandler, @unchecked Sendable
         return []
     }
 
-    func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: input.itemId, name: "Test")
     }
 
-    func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         TestItem(id: "new", name: input.body.name)
     }
 
-    func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {}
+    func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {}
 }
 
 // MARK: - Mock Auth Middleware

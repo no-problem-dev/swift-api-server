@@ -2,42 +2,42 @@ import APIContract
 
 /// ルート登録プロトコル
 ///
-/// HTTPルートの登録機能を提供する抽象インターフェース。
-public protocol RouteRegistrar: Sendable {
+/// HTTP ルートの登録機能を提供する抽象インターフェース。
+public protocol Routes: Sendable {
     /// サブグループの型
     associatedtype Group: RouteGroup
 
     // MARK: - Simple Routes
 
-    /// GETルートを登録
+    /// GET ルートを登録
     @discardableResult
     func get<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// POSTルートを登録
+    /// POST ルートを登録
     @discardableResult
     func post<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// PUTルートを登録
+    /// PUT ルートを登録
     @discardableResult
     func put<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// DELETEルートを登録
+    /// DELETE ルートを登録
     @discardableResult
     func delete<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// PATCHルートを登録
+    /// PATCH ルートを登録
     @discardableResult
     func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -51,12 +51,11 @@ public protocol RouteRegistrar: Sendable {
 
     // MARK: - APIContract Mounting
 
-    /// APIグループをマウント
-    func mount<G: APIContractGroup, H: APIGroupHandler>(
-        _ group: G.Type,
-        handler: H
-    ) -> MountedGroup<G, H> where H.Group == G
+    /// API グループをマウント（Service.Group から型推論）
+    func mount<S: APIService>(
+        _ service: S
+    ) -> APIRoutes<S.Group, S>
 }
 
 /// ルートグループプロトコル
-public protocol RouteGroup: RouteRegistrar {}
+public protocol RouteGroup: Routes {}

@@ -55,12 +55,12 @@ extension Request {
         )
     }
 
-    /// HandlerContextを構築
+    /// ServiceContextを構築
     ///
     /// リクエストの認証状態を確認し、適切なコンテキストを返します。
-    func buildHandlerContext<Endpoint: APIContract>(
+    func buildServiceContext<Endpoint: APIContract>(
         for endpoint: Endpoint.Type
-    ) throws -> HandlerContext {
+    ) throws -> ServiceContext {
         let authRequirement = Endpoint.auth
 
         switch authRequirement {
