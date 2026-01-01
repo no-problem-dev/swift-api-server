@@ -58,3 +58,5 @@
 
 [未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/no-problem-dev/swift-api-server/releases/tag/v1.0.0
+
+<!-- Auto-generated on 2026-01-01T06:40:04Z by release workflow -->
