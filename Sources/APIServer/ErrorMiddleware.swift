@@ -1,19 +1,17 @@
-import Vapor
+import Foundation
+@_implementationOnly import Vapor
 import APIContract
 
 /// APIContract用のエラーミドルウェア
 ///
 /// `APIContractError`をキャッチして適切なJSONレスポンスに変換します。
 ///
-/// ## 使用例
-/// ```swift
-/// app.middleware.use(APIContractErrorMiddleware())
-/// ```
-public struct APIContractErrorMiddleware: AsyncMiddleware {
+/// 使用方法: `server.useErrorMiddleware()` を呼び出してください。
+struct APIContractErrorMiddleware: AsyncMiddleware {
 
-    public init() {}
+    init() {}
 
-    public func respond(
+    func respond(
         to request: Request,
         chainingTo next: any AsyncResponder
     ) async throws -> Response {
@@ -96,7 +94,7 @@ public struct APIContractErrorMiddleware: AsyncMiddleware {
 
 extension JSONEncoder {
     /// API用のデフォルトJSONEncoder
-    public static var apiDefault: JSONEncoder {
+    static var apiDefault: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder

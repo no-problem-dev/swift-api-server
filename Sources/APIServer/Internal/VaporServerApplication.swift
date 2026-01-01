@@ -1,10 +1,11 @@
-import Vapor
+import Foundation
+@_implementationOnly import Vapor
 import APIContract
 
 /// Vaporベースのサーバーアプリケーション実装
 public final class VaporServerApplication: ServerApplication, @unchecked Sendable {
-    /// 内部Vaporアプリケーション（Vapor専用ミドルウェア追加時のみ使用）
-    public let app: Application
+    /// 内部Vaporアプリケーション
+    let app: Application
 
     /// サーバー環境
     public let environment: ServerEnvironment

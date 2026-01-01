@@ -1,4 +1,5 @@
-import Vapor
+import Foundation
+@_implementationOnly import Vapor
 import APIContract
 
 /// VaporベースのRouteRegistrar実装

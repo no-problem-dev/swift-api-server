@@ -1,39 +1,13 @@
-import Vapor
+import Foundation
+@_implementationOnly import Vapor
 import APIContract
 
-// MARK: - Application Extension
-
-extension Application {
-    /// APIグループをマウントし、Handlerで処理を行う
-    ///
-    /// ## 使用例
-    /// ```swift
-    /// let activitiesHandler = ActivitiesHandlerImpl(...)
-    /// try app.mount(ActivitiesAPI.self, handler: activitiesHandler)
-    /// ```
-    ///
-    /// - Parameters:
-    ///   - group: マウントするAPIグループの型
-    ///   - handler: エンドポイントを処理するHandler
-    @discardableResult
-    public func mount<Group: APIContractGroup, Handler: APIGroupHandler>(
-        _ group: Group.Type,
-        handler: Handler
-    ) -> MountedGroup<Group, Handler> where Handler.Group == Group {
-        let pathComponents = group.basePath.toPathComponents
-        let routeGroup = self.grouped(pathComponents)
-        return MountedGroup(routes: routeGroup, handler: handler)
-    }
-}
-
-// MARK: - RoutesBuilder Extension
+// MARK: - RoutesBuilder Extension (Internal)
 
 extension RoutesBuilder {
-    /// APIグループをマウント（RoutesBuilder用）
-    ///
-    /// middlewareが適用された状態でAPIグループをマウントする場合に使用
+    /// APIグループをマウント（内部使用）
     @discardableResult
-    public func mount<Group: APIContractGroup, Handler: APIGroupHandler>(
+    func mount<Group: APIContractGroup, Handler: APIGroupHandler>(
         _ group: Group.Type,
         handler: Handler
     ) -> MountedGroup<Group, Handler> where Handler.Group == Group {
@@ -42,16 +16,9 @@ extension RoutesBuilder {
         return MountedGroup(routes: routeGroup, handler: handler)
     }
 
-    /// 個別のエンドポイントを登録する
-    ///
-    /// ## 使用例
-    /// ```swift
-    /// app.mount(ActivitiesAPI.self, handler: handler)
-    ///     .register(ActivitiesAPI.List.self) { handler.handle($0, context: $1) }
-    ///     .register(ActivitiesAPI.Get.self) { handler.handle($0, context: $1) }
-    /// ```
+    /// 個別のエンドポイントを登録する（内部使用）
     @discardableResult
-    public func register<Endpoint: APIContract>(
+    func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
         handler: @escaping @Sendable (Endpoint.Input, HandlerContext) async throws -> Endpoint.Output
     ) -> Self where Endpoint.Input == Endpoint, Endpoint: APIInput, Endpoint.Output: Encodable {
@@ -75,9 +42,9 @@ extension RoutesBuilder {
         return self
     }
 
-    /// EmptyOutputを返すエンドポイントを登録する
+    /// EmptyOutputを返すエンドポイントを登録する（内部使用）
     @discardableResult
-    public func register<Endpoint: APIContract>(
+    func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
         handler: @escaping @Sendable (Endpoint.Input, HandlerContext) async throws -> Void
     ) -> Self where Endpoint.Input == Endpoint, Endpoint: APIInput, Endpoint.Output == EmptyOutput {
@@ -100,9 +67,7 @@ extension RoutesBuilder {
 // MARK: - Path Components Conversion
 
 extension String {
-    /// サブパスをVaporのPathComponentに変換
-    ///
-    /// - ":userId" → ":userId" (Vaporのパスパラメータ形式)
+    /// サブパスをVaporのPathComponentに変換（内部使用）
     var toPathComponents: [PathComponent] {
         guard !isEmpty else { return [] }
 
