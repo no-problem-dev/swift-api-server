@@ -7,9 +7,13 @@
 
 ## [未リリース]
 
+なし
+
+## [1.0.1] - 2026-01-01
+
 ### 変更
 
-- **Vapor隠蔽**: `@_implementationOnly import Vapor` により利用側で `import Vapor` が不要に
+- **Vapor隠蔽**: `internal import Vapor` (SE-0409) により利用側で `import Vapor` が不要に
   - `VaporServerApplication.app` を `internal` に変更
   - `APIContractErrorMiddleware` を `internal` に変更（`server.useErrorMiddleware()` を使用）
   - `AuthMiddleware` を `internal` に変更（`server.useAuth()` を使用）
@@ -63,5 +67,8 @@
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.0...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-api-server/releases/tag/v1.0.0
+
+<!-- Auto-generated on 2026-01-01T06:40:04Z by release workflow -->
