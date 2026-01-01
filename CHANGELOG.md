@@ -9,6 +9,10 @@
 
 なし
 
+## [1.0.3] - 2026-01-01
+
+なし
+
 ## [1.0.1] - 2026-01-01
 
 ### 変更
@@ -67,7 +71,8 @@
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.1...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.1...v1.0.3
 [1.0.1]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-api-server/releases/tag/v1.0.0
 
