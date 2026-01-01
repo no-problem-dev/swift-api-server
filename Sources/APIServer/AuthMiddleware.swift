@@ -1,4 +1,4 @@
-@_implementationOnly import Vapor
+internal import Vapor
 import APIContract
 
 /// 認証ミドルウェア

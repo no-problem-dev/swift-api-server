@@ -1,5 +1,5 @@
 import Foundation
-@_implementationOnly import Vapor
+internal import Vapor
 import APIContract
 
 // MARK: - RoutesBuilder Extension (Internal)
