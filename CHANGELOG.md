@@ -11,7 +11,13 @@
 
 ## [1.0.3] - 2026-01-01
 
-なし
+### 変更
+
+- **Handler → Service リネーム** (APIContract v1.0.3対応)
+  - `RouteRegistrar` → `Routes` プロトコル
+  - `MountedGroup` → `APIRoutes`
+  - `VaporRouteRegistrar` → `VaporRoutes`
+  - Handler参照をService パターンに更新
 
 ## [1.0.1] - 2026-01-01
 
