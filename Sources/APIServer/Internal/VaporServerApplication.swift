@@ -14,7 +14,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     public var logger: ServerLogger { VaporLogger(logger: app.logger) }
 
     /// ルート登録インターフェース
-    public var routes: VaporRouteRegistrar { VaporRouteRegistrar(app: app) }
+    public var routes: VaporRoutes { VaporRoutes(app: app) }
 
     /// 初期化
     public init(environment: ServerEnvironment = .detect()) async throws {
@@ -103,7 +103,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
-        handler: @escaping @Sendable (HandlerContext) async throws -> Response
+        handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.GET, components) { request async throws -> Vapor.Response in
@@ -118,7 +118,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
-        handler: @escaping @Sendable (HandlerContext) async throws -> Response
+        handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.POST, components) { request async throws -> Vapor.Response in
@@ -146,7 +146,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
     }
 
-    private static func buildContext(from request: Request) -> HandlerContext {
+    private static func buildContext(from request: Request) -> ServiceContext {
         if let userId = request.auth.get(AuthenticatedUser.self)?.id {
             return .authenticated(userId: userId)
         }
@@ -192,7 +192,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
-        handler: @escaping @Sendable (HandlerContext) async throws -> Response
+        handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.GET, components) { request async throws -> Vapor.Response in
@@ -207,7 +207,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
-        handler: @escaping @Sendable (HandlerContext) async throws -> Response
+        handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.POST, components) { request async throws -> Vapor.Response in
@@ -231,7 +231,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
     }
 
-    private func buildContext(from request: Request) -> HandlerContext {
+    private func buildContext(from request: Request) -> ServiceContext {
         if let userId = request.auth.get(AuthenticatedUser.self)?.id {
             return .authenticated(userId: userId)
         }

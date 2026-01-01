@@ -117,12 +117,12 @@ public enum TestAPIError: APIContractError {
 
 // MARK: - Test Handler
 
-public struct TestAPIHandlerImpl: TestAPIHandler {
+public struct TestAPIServiceImpl: TestAPIService {
     private var items: [String: TestItem] = [:]
 
     public init() {}
 
-    public func handle(_ input: TestAPI.ListItems, context: HandlerContext) async throws -> [TestItem] {
+    public func handle(_ input: TestAPI.ListItems, context: ServiceContext) async throws -> [TestItem] {
         var result = Array(items.values)
 
         if let offset = input.offset {
@@ -135,14 +135,14 @@ public struct TestAPIHandlerImpl: TestAPIHandler {
         return result
     }
 
-    public func handle(_ input: TestAPI.GetItem, context: HandlerContext) async throws -> TestItem {
+    public func handle(_ input: TestAPI.GetItem, context: ServiceContext) async throws -> TestItem {
         guard let item = items[input.itemId] else {
             throw TestAPIError.itemNotFound(id: input.itemId)
         }
         return item
     }
 
-    public func handle(_ input: TestAPI.CreateItem, context: HandlerContext) async throws -> TestItem {
+    public func handle(_ input: TestAPI.CreateItem, context: ServiceContext) async throws -> TestItem {
         let name = input.body.name
         if name.isEmpty {
             throw TestAPIError.invalidName(reason: "Name cannot be empty")
@@ -152,21 +152,21 @@ public struct TestAPIHandlerImpl: TestAPIHandler {
         return item
     }
 
-    public func handle(_ input: TestAPI.DeleteItem, context: HandlerContext) async throws {
+    public func handle(_ input: TestAPI.DeleteItem, context: ServiceContext) async throws {
         // Just succeed for testing
     }
 }
 
 // MARK: - Protected Handler
 
-public struct ProtectedAPIHandlerImpl: ProtectedAPIHandler {
+public struct ProtectedAPIServiceImpl: ProtectedAPIService {
     public init() {}
 
-    public func handle(_ input: ProtectedAPI.GetSecret, context: HandlerContext) async throws -> SecretData {
+    public func handle(_ input: ProtectedAPI.GetSecret, context: ServiceContext) async throws -> SecretData {
         SecretData(secret: "top-secret-value")
     }
 
-    public func handle(_ input: ProtectedAPI.DeleteResource, context: HandlerContext) async throws {
+    public func handle(_ input: ProtectedAPI.DeleteResource, context: ServiceContext) async throws {
         // Just succeed for testing
     }
 }

@@ -7,7 +7,7 @@ import APIContract
 /// 具体的なフレームワーク（Vapor等）の詳細から分離されます。
 public protocol ServerApplication: Sendable {
     /// ルート登録インターフェース
-    associatedtype Routes: RouteRegistrar
+    associatedtype Routes: APIServer.Routes
 
     /// サーバー環境
     var environment: ServerEnvironment { get }

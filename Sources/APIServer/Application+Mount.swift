@@ -5,22 +5,22 @@ import APIContract
 // MARK: - RoutesBuilder Extension (Internal)
 
 extension RoutesBuilder {
-    /// APIグループをマウント（内部使用）
+    /// API グループをマウント（内部使用）
+    /// Service.Group から型推論
     @discardableResult
-    func mount<Group: APIContractGroup, Handler: APIGroupHandler>(
-        _ group: Group.Type,
-        handler: Handler
-    ) -> MountedGroup<Group, Handler> where Handler.Group == Group {
-        let pathComponents = group.basePath.toPathComponents
+    func mount<Service: APIService>(
+        _ service: Service
+    ) -> APIRoutes<Service.Group, Service> {
+        let pathComponents = Service.Group.basePath.toPathComponents
         let routeGroup = self.grouped(pathComponents)
-        return MountedGroup(routes: routeGroup, handler: handler)
+        return APIRoutes(routes: routeGroup, service: service)
     }
 
     /// 個別のエンドポイントを登録する（内部使用）
     @discardableResult
     func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
-        handler: @escaping @Sendable (Endpoint.Input, HandlerContext) async throws -> Endpoint.Output
+        handler: @escaping @Sendable (Endpoint.Input, ServiceContext) async throws -> Endpoint.Output
     ) -> Self where Endpoint.Input == Endpoint, Endpoint: APIInput, Endpoint.Output: Encodable {
         let method = Vapor.HTTPMethod(rawValue: Endpoint.method.rawValue)
         let pathComponents = endpoint.subPath.toPathComponents
@@ -30,7 +30,7 @@ extension RoutesBuilder {
             let input = try request.decodeInput(Endpoint.self)
 
             // 認証コンテキストを構築
-            let context = try request.buildHandlerContext(for: Endpoint.self)
+            let context = try request.buildServiceContext(for: Endpoint.self)
 
             // ハンドラーを実行
             let output = try await handler(input, context)
@@ -46,14 +46,14 @@ extension RoutesBuilder {
     @discardableResult
     func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
-        handler: @escaping @Sendable (Endpoint.Input, HandlerContext) async throws -> Void
+        handler: @escaping @Sendable (Endpoint.Input, ServiceContext) async throws -> Void
     ) -> Self where Endpoint.Input == Endpoint, Endpoint: APIInput, Endpoint.Output == EmptyOutput {
         let method = Vapor.HTTPMethod(rawValue: Endpoint.method.rawValue)
         let pathComponents = endpoint.subPath.toPathComponents
 
         self.on(method, pathComponents) { request async throws -> Response in
             let input = try request.decodeInput(Endpoint.self)
-            let context = try request.buildHandlerContext(for: Endpoint.self)
+            let context = try request.buildServiceContext(for: Endpoint.self)
 
             try await handler(input, context)
 
