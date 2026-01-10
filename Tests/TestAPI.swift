@@ -170,3 +170,73 @@ public struct ProtectedAPIServiceImpl: ProtectedAPIService {
         // Just succeed for testing
     }
 }
+
+// MARK: - Nested Resource API (basePath にパスパラメータを含む)
+
+/// ネストされたリソースのテスト用API
+/// ChatsAPI と同様のパターン: /v1/books/:bookId/chats
+@APIGroup(path: "/v1/books/:bookId/chats", auth: .none)
+public enum NestedResourceAPI {
+    /// サブパス空: basePath のパラメータのみ
+    /// GET /v1/books/:bookId/chats
+    @Endpoint(.get)
+    public struct List {
+        @PathParam public var bookId: String
+
+        public typealias Output = [TestItem]
+    }
+
+    /// サブパスにも追加パラメータ
+    /// GET /v1/books/:bookId/chats/:chatId
+    @Endpoint(.get, path: ":chatId")
+    public struct Get {
+        @PathParam public var bookId: String
+        @PathParam public var chatId: String
+
+        public typealias Output = TestItem
+    }
+
+    /// POST: basePath パラメータ + ボディ
+    /// POST /v1/books/:bookId/chats
+    @Endpoint(.post)
+    public struct Create {
+        @PathParam public var bookId: String
+        @Body public var body: CreateItemBody
+
+        public typealias Output = TestItem
+    }
+
+    /// DELETE: 複数パスパラメータ
+    /// DELETE /v1/books/:bookId/chats/:chatId
+    @Endpoint(.delete, path: ":chatId")
+    public struct Delete {
+        @PathParam public var bookId: String
+        @PathParam public var chatId: String
+
+        public typealias Output = EmptyOutput
+    }
+}
+
+// MARK: - Nested Resource Handler
+// NestedResourceAPIService プロトコルは @APIGroup マクロにより自動生成される
+
+public struct NestedResourceAPIServiceImpl: NestedResourceAPIService {
+    public init() {}
+
+    public func handle(_ input: NestedResourceAPI.List, context: ServiceContext) async throws -> [TestItem] {
+        // bookId を使用して結果を返す
+        [TestItem(id: "chat-1", name: "Chat in book \(input.bookId)")]
+    }
+
+    public func handle(_ input: NestedResourceAPI.Get, context: ServiceContext) async throws -> TestItem {
+        TestItem(id: input.chatId, name: "Chat \(input.chatId) in book \(input.bookId)")
+    }
+
+    public func handle(_ input: NestedResourceAPI.Create, context: ServiceContext) async throws -> TestItem {
+        TestItem(id: "new-chat", name: input.body.name)
+    }
+
+    public func handle(_ input: NestedResourceAPI.Delete, context: ServiceContext) async throws {
+        // Just succeed for testing
+    }
+}

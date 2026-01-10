@@ -14,8 +14,10 @@ extension Request {
         // パスパラメータを収集（Vaporのパスパラメータを取得）
         var pathParams: [String: String] = [:]
         // Vaporはパスパラメータを `:name` 形式で登録し、`parameters.get("name")` で取得
-        // subPathからパスパラメータ名を抽出
-        for segment in Endpoint.subPath.split(separator: "/") {
+        // pathTemplate（Group.basePath + subPath）からパスパラメータ名を抽出
+        // これにより、ネストされたリソース（例: /v1/books/:bookId/chats）でも
+        // basePath に定義されたパスパラメータを正しく抽出できる
+        for segment in Endpoint.pathTemplate.split(separator: "/") {
             let str = String(segment)
             if str.hasPrefix(":") {
                 let paramName = String(str.dropFirst())
