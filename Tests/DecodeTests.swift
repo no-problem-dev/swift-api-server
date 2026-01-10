@@ -12,7 +12,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = CaptureHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -30,7 +30,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = CaptureHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -51,7 +51,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = QueryCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -69,7 +69,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = QueryCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -87,7 +87,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = QueryCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -107,7 +107,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = BodyCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.CreateItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -126,7 +126,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = BodyCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.CreateItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -147,7 +147,7 @@ final class DecodeTests: XCTestCase {
 
         let handler = ContextCapturingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -165,7 +165,7 @@ final class DecodeTests: XCTestCase {
         let handler = ContextCapturingHandler()
 
         app.grouped(MockAuthMiddleware(userId: "user-abc"))
-            .mount(TestAPI.self, handler: handler)
+            .mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -185,13 +185,118 @@ final class DecodeTests: XCTestCase {
 
         let handler = ProtectedAPIServiceImpl()
 
-        app.mount(ProtectedAPI.self, handler: handler)
+        app.mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
 
         try await app.test(.GET, "/protected/secret") { res async throws in
             XCTAssertEqual(res.status, .unauthorized)
+        }
+    }
+
+    // MARK: - Nested Resource Path Parameter Tests
+
+    /// basePathにパスパラメータ、subPathが空のケース
+    /// GET /v1/books/:bookId/chats
+    func testNestedResourceListWithBasePathParam() async throws {
+        let app = try await Application.make(.testing)
+        defer { Task { try await app.asyncShutdown() } }
+
+        let handler = NestedResourceCapturingHandler()
+
+        app.mount(handler)
+            .register(NestedResourceAPI.List.self) { input, ctx in
+                try await handler.handle(input, context: ctx)
+            }
+
+        try await app.test(.GET, "/v1/books/book-123/chats") { res async throws in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(handler.lastBookId, "book-123")
+        }
+    }
+
+    /// basePathにパスパラメータ、subPathにも追加パラメータのケース
+    /// GET /v1/books/:bookId/chats/:chatId
+    func testNestedResourceGetWithMultiplePathParams() async throws {
+        let app = try await Application.make(.testing)
+        defer { Task { try await app.asyncShutdown() } }
+
+        let handler = NestedResourceCapturingHandler()
+
+        app.mount(handler)
+            .register(NestedResourceAPI.Get.self) { input, ctx in
+                try await handler.handle(input, context: ctx)
+            }
+
+        try await app.test(.GET, "/v1/books/book-123/chats/chat-456") { res async throws in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(handler.lastBookId, "book-123")
+            XCTAssertEqual(handler.lastChatId, "chat-456")
+        }
+    }
+
+    /// basePathにパスパラメータ + ボディのケース
+    /// POST /v1/books/:bookId/chats
+    func testNestedResourceCreateWithBasePathParamAndBody() async throws {
+        let app = try await Application.make(.testing)
+        defer { Task { try await app.asyncShutdown() } }
+
+        let handler = NestedResourceCapturingHandler()
+
+        app.mount(handler)
+            .register(NestedResourceAPI.Create.self) { input, ctx in
+                try await handler.handle(input, context: ctx)
+            }
+
+        try await app.test(.POST, "/v1/books/book-789/chats", beforeRequest: { req async throws in
+            try req.content.encode(CreateItemBody(name: "New Chat Message"))
+        }) { res async throws in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(handler.lastBookId, "book-789")
+            XCTAssertEqual(handler.lastName, "New Chat Message")
+        }
+    }
+
+    /// DELETE: 複数パスパラメータのケース
+    /// DELETE /v1/books/:bookId/chats/:chatId
+    func testNestedResourceDeleteWithMultiplePathParams() async throws {
+        let app = try await Application.make(.testing)
+        defer { Task { try await app.asyncShutdown() } }
+
+        let handler = NestedResourceCapturingHandler()
+
+        app.mount(handler)
+            .register(NestedResourceAPI.Delete.self) { input, ctx in
+                try await handler.handle(input, context: ctx)
+            }
+
+        try await app.test(.DELETE, "/v1/books/book-abc/chats/chat-xyz") { res async throws in
+            XCTAssertEqual(res.status, .noContent)
+            XCTAssertEqual(handler.lastBookId, "book-abc")
+            XCTAssertEqual(handler.lastChatId, "chat-xyz")
+        }
+    }
+
+    /// UUID形式のパスパラメータのケース
+    func testNestedResourceWithUUIDPathParams() async throws {
+        let app = try await Application.make(.testing)
+        defer { Task { try await app.asyncShutdown() } }
+
+        let handler = NestedResourceCapturingHandler()
+
+        app.mount(handler)
+            .register(NestedResourceAPI.Get.self) { input, ctx in
+                try await handler.handle(input, context: ctx)
+            }
+
+        let bookId = "927AC2D9-FBB3-4F6D-9EE4-822E8788EC44"
+        let chatId = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
+
+        try await app.test(.GET, "/v1/books/\(bookId)/chats/\(chatId)") { res async throws in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(handler.lastBookId, bookId)
+            XCTAssertEqual(handler.lastChatId, chatId)
         }
     }
 }
@@ -291,5 +396,35 @@ private struct MockAuthMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
         request.auth.login(AuthenticatedUser(id: userId))
         return try await next.respond(to: request)
+    }
+}
+
+// MARK: - Nested Resource Capturing Handler
+
+private final class NestedResourceCapturingHandler: NestedResourceAPIService, @unchecked Sendable {
+    var lastBookId: String?
+    var lastChatId: String?
+    var lastName: String?
+
+    func handle(_ input: NestedResourceAPI.List, context: ServiceContext) async throws -> [TestItem] {
+        lastBookId = input.bookId
+        return [TestItem(id: "chat-1", name: "Test Chat")]
+    }
+
+    func handle(_ input: NestedResourceAPI.Get, context: ServiceContext) async throws -> TestItem {
+        lastBookId = input.bookId
+        lastChatId = input.chatId
+        return TestItem(id: input.chatId, name: "Test Chat")
+    }
+
+    func handle(_ input: NestedResourceAPI.Create, context: ServiceContext) async throws -> TestItem {
+        lastBookId = input.bookId
+        lastName = input.body.name
+        return TestItem(id: "new-chat", name: input.body.name)
+    }
+
+    func handle(_ input: NestedResourceAPI.Delete, context: ServiceContext) async throws {
+        lastBookId = input.bookId
+        lastChatId = input.chatId
     }
 }

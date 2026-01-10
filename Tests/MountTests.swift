@@ -12,7 +12,7 @@ final class MountTests: XCTestCase {
 
         let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -28,7 +28,7 @@ final class MountTests: XCTestCase {
 
         let handler = MockGetItemHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -46,7 +46,7 @@ final class MountTests: XCTestCase {
 
         let handler = MockListItemsHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -64,7 +64,7 @@ final class MountTests: XCTestCase {
 
         let handler = MockCreateItemHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.CreateItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -86,7 +86,7 @@ final class MountTests: XCTestCase {
 
         let handler = MockDeleteItemHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.DeleteItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -104,7 +104,7 @@ final class MountTests: XCTestCase {
 
         let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -138,7 +138,7 @@ final class MountTests: XCTestCase {
 
         let handler = ContextCheckingHandler()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -156,7 +156,7 @@ final class MountTests: XCTestCase {
         let handler = ContextCheckingHandler()
 
         app.grouped(MockAuthMiddleware())
-            .mount(TestAPI.self, handler: handler)
+            .mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -179,7 +179,7 @@ final class MountTests: XCTestCase {
         let handler = ProtectedAPIServiceImpl()
 
         // Without auth middleware
-        app.mount(ProtectedAPI.self, handler: handler)
+        app.mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -197,7 +197,7 @@ final class MountTests: XCTestCase {
 
         // With auth middleware
         app.grouped(MockAuthMiddleware())
-            .mount(ProtectedAPI.self, handler: handler)
+            .mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
