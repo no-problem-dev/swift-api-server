@@ -15,7 +15,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         let handler = ErrorThrowingHandler(error: TestAPIError.itemNotFound(id: "abc123"))
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -37,7 +37,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         let handler = ErrorThrowingHandler(error: TestAPIError.invalidName(reason: "Too short"))
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -59,7 +59,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         let handler = ErrorThrowingHandler(error: TestAPIError.unauthorized)
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -82,7 +82,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.CreateItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -112,7 +112,7 @@ final class ErrorMiddlewareTests: XCTestCase {
 
         let handler = ErrorThrowingHandler(error: TestAPIError.itemNotFound(id: "test"))
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.GetItem.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }

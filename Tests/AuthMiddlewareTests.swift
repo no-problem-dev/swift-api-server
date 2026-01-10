@@ -28,9 +28,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = TestAPIHandlerImpl()
+        let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 // Verify authenticated context
                 XCTAssertEqual(ctx.userId, "user-abc")
@@ -52,9 +52,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = TestAPIHandlerImpl()
+        let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 XCTAssertEqual(ctx.userId, "user-xyz")
                 return try await handler.handle(input, context: ctx)
@@ -77,9 +77,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = TestAPIHandlerImpl()
+        let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 // For auth: .none endpoints, should allow anonymous
                 XCTAssertNil(ctx.userId)
@@ -104,9 +104,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = TestAPIHandlerImpl()
+        let handler = TestAPIServiceImpl()
 
-        app.mount(TestAPI.self, handler: handler)
+        app.mount(handler)
             .register(TestAPI.ListItems.self) { input, ctx in
                 XCTAssertNil(ctx.userId)
                 return try await handler.handle(input, context: ctx)
@@ -125,9 +125,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = ProtectedAPIHandlerImpl()
+        let handler = ProtectedAPIServiceImpl()
 
-        app.mount(ProtectedAPI.self, handler: handler)
+        app.mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
@@ -151,9 +151,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = ProtectedAPIHandlerImpl()
+        let handler = ProtectedAPIServiceImpl()
 
-        app.mount(ProtectedAPI.self, handler: handler)
+        app.mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 XCTAssertEqual(ctx.userId, "admin-user")
                 return try await handler.handle(input, context: ctx)
@@ -174,9 +174,9 @@ final class AuthMiddlewareTests: XCTestCase {
         app.middleware.use(AuthMiddleware(provider: provider))
         app.middleware.use(APIContractErrorMiddleware())
 
-        let handler = ProtectedAPIHandlerImpl()
+        let handler = ProtectedAPIServiceImpl()
 
-        app.mount(ProtectedAPI.self, handler: handler)
+        app.mount(handler)
             .register(ProtectedAPI.GetSecret.self) { input, ctx in
                 try await handler.handle(input, context: ctx)
             }
