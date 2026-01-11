@@ -3,6 +3,7 @@ import APIContract
 /// CORS（Cross-Origin Resource Sharing）ミドルウェア
 ///
 /// クロスオリジンリクエストを許可するためのミドルウェア。
+/// DataResponse/StreamResponse どちらにも対応。
 public struct CORSServerMiddleware: ServerMiddleware {
     private let configuration: CORSConfiguration
 
@@ -16,7 +17,7 @@ public struct CORSServerMiddleware: ServerMiddleware {
     ) async throws -> any ServerResponse {
         // プリフライトリクエストの処理
         if request.method == "OPTIONS" {
-            return BasicServerResponse(
+            return BasicDataResponse(
                 status: .noContent,
                 headers: corsHeaders(for: request)
             )
@@ -26,16 +27,7 @@ public struct CORSServerMiddleware: ServerMiddleware {
         let response = try await next(request)
 
         // CORSヘッダーを追加
-        var headers = response.headers
-        for (key, value) in corsHeaders(for: request) {
-            headers[key] = value
-        }
-
-        return BasicServerResponse(
-            status: response.status,
-            headers: headers,
-            body: response.body
-        )
+        return response.addingHeaders(corsHeaders(for: request))
     }
 
     private func corsHeaders(for request: any ServerRequest) -> [String: String] {
