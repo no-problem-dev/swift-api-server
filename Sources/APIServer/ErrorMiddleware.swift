@@ -90,13 +90,3 @@ struct APIContractErrorMiddleware: AsyncMiddleware {
     }
 }
 
-// MARK: - JSONEncoder Extension
-
-extension JSONEncoder {
-    /// API用のデフォルトJSONEncoder
-    static var apiDefault: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }
-}
