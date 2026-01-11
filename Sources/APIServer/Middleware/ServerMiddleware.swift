@@ -4,6 +4,11 @@ import Foundation
 ///
 /// リクエスト/レスポンス処理パイプラインに介入するミドルウェアの抽象インターフェース。
 /// 認証、ロギング、CORS、エラーハンドリングなどの横断的関心事を実装します。
+///
+/// ## 設計思想
+/// - レスポンス型はexistentialとして扱う（`any ServerResponse`）
+/// - DataResponse/StreamResponse どちらでも透過的に動作
+/// - 具体的な型が必要な場合はダウンキャストで対応
 public protocol ServerMiddleware: Sendable {
     /// ミドルウェア処理を実行
     ///
@@ -41,43 +46,18 @@ public protocol ServerRequest: Sendable {
     var authenticatedUserId: String? { get }
 }
 
-/// サーバーレスポンスプロトコル
-public protocol ServerResponse: Sendable {
-    /// HTTPステータス
-    var status: HTTPStatus { get }
+// MARK: - Response Header Utilities
 
-    /// HTTPヘッダー
-    var headers: [String: String] { get }
-
-    /// レスポンスボディ
-    var body: Data { get }
-}
-
-/// 基本的なレスポンス実装
-public struct BasicServerResponse: ServerResponse {
-    public let status: HTTPStatus
-    public let headers: [String: String]
-    public let body: Data
-
-    public init(
-        status: HTTPStatus = .ok,
-        headers: [String: String] = [:],
-        body: Data = Data()
-    ) {
-        self.status = status
-        self.headers = headers
-        self.body = body
-    }
-
-    public init(
-        status: HTTPStatus = .ok,
-        headers: [String: String] = [:],
-        json: some Encodable
-    ) throws {
-        self.status = status
-        var headers = headers
-        headers["Content-Type"] = "application/json"
-        self.headers = headers
-        self.body = try JSONEncoder().encode(json)
+extension ServerResponse {
+    /// ヘッダーを追加したレスポンスを返す
+    ///
+    /// HeaderModifiableResponseに準拠している場合はその機能を使用。
+    /// それ以外の場合は元のレスポンスをそのまま返す（ストリームの場合など）。
+    public func addingHeaders(_ headers: [String: String]) -> any ServerResponse {
+        if let modifiable = self as? any HeaderModifiableResponse {
+            return modifiable.withAddedHeaders(headers) as any ServerResponse
+        }
+        // ストリームレスポンス等でヘッダー追加ができない場合は元を返す
+        return self
     }
 }

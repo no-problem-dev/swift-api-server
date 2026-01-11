@@ -9,6 +9,29 @@
 
 なし
 
+## [1.0.5] - 2026-01-11
+
+### 追加
+
+- **SSEストリーミングサーバー**: Server-Sent Events (SSE) サーバー実装
+  - `SSEEvent`: サーバー側SSEイベント（エンコード対応）
+  - `SSERoutes`: `StreamingRouteRegistrar` 実装
+  - `VaporSSEBuilder`: VaporのSSEレスポンスビルダー
+  - `ServerResponse`/`DataResponse`/`StreamResponse`: レスポンス型抽象化
+
+### 変更
+
+- **ミドルウェア更新**: ストリーミングレスポンス対応
+  - `ErrorMiddleware`: ストリーミングエラーハンドリング
+  - `CORSMiddleware`: ストリーミング対応
+  - `ServerMiddleware`: ストリーミング対応
+  - `VaporServerApplication`: SSEルート登録統合
+
+### テスト
+
+- SSEイベントエンコーディングのテストを追加
+- ルート登録のテストを追加
+
 ## [1.0.4] - 2026-01-10
 
 ### 修正
@@ -86,7 +109,8 @@
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.4...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.1...v1.0.3
 [1.0.1]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.0...v1.0.1
@@ -95,3 +119,5 @@
 <!-- Auto-generated on 2026-01-01T06:40:04Z by release workflow -->
 
 <!-- Auto-generated on 2026-01-01T12:30:54Z by release workflow -->
+
+<!-- Auto-generated on 2026-01-10T04:36:59Z by release workflow -->

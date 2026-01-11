@@ -34,7 +34,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// ミドルウェアを追加（抽象化された ServerMiddleware）
     public func use(_ middleware: any ServerMiddleware) {
-        app.middleware.use(VaporMiddlewareAdapter(middleware: middleware))
+        app.middleware.use(VaporMiddlewareAdapter(middleware: middleware, logger: app.logger))
     }
 
     /// 認証ミドルウェアを追加
@@ -146,7 +146,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
     }
 
-    private static func buildContext(from request: Request) -> ServiceContext {
+    static func buildContext(from request: Request) -> ServiceContext {
         if let userId = request.auth.get(AuthenticatedUser.self)?.id {
             return .authenticated(userId: userId)
         }
@@ -277,6 +277,7 @@ struct VaporLogger: ServerLogger {
 
 struct VaporMiddlewareAdapter: AsyncMiddleware {
     let middleware: any ServerMiddleware
+    let logger: Logger
 
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         let serverRequest = VaporServerRequest(request: request)
@@ -284,24 +285,43 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
         let serverResponse = try await middleware.handle(request: serverRequest) { _ in
             // 次のミドルウェア/ハンドラーを呼び出し
             let response = try await next.respond(to: request)
-            return VaporServerResponse(response: response)
+            return VaporResponse(response: response)
         }
 
-        // ServerResponseをVapor Responseに変換
-        if let vaporResponse = serverResponse as? VaporServerResponse {
+        // VaporResponseの場合、元のVapor Responseを返す
+        // これによりストリーミングボディが保持される
+        if let vaporResponse = serverResponse as? VaporResponse {
             return vaporResponse.response
         }
 
-        // BasicServerResponseなどの場合は変換
+        // AnyStreamResponseの場合、内部のVapor Responseを返す
+        if let anyStream = serverResponse as? AnyStreamResponse,
+           let vaporResponse = anyStream.underlyingResponse as? Response {
+            return vaporResponse
+        }
+
+        // BasicDataResponseなどの場合は変換
+        if let dataResponse = serverResponse as? DataResponse {
+            var headers = HTTPHeaders()
+            for (key, value) in dataResponse.headers {
+                headers.add(name: key, value: value)
+            }
+            return Response(
+                status: HTTPResponseStatus(statusCode: dataResponse.status.code),
+                headers: headers,
+                body: .init(data: dataResponse.body)
+            )
+        }
+
+        // その他の場合はヘッダーのみ変換（ボディは空）
         var headers = HTTPHeaders()
         for (key, value) in serverResponse.headers {
             headers.add(name: key, value: value)
         }
-
         return Response(
             status: HTTPResponseStatus(statusCode: serverResponse.status.code),
             headers: headers,
-            body: .init(data: serverResponse.body)
+            body: .empty
         )
     }
 }
@@ -358,9 +378,13 @@ struct VaporServerRequest: ServerRequest {
     }
 }
 
-// MARK: - Vapor Response Adapter
+// MARK: - Vapor Response Wrapper
 
-struct VaporServerResponse: ServerResponse {
+/// Vapor ResponseをServerResponseとしてラップ
+///
+/// ミドルウェアがVaporのResponseを直接操作できるようにしつつ、
+/// 抽象インターフェースを提供する。ストリーミングレスポンスにも対応。
+struct VaporResponse: ServerResponse, HeaderModifiableResponse {
     let response: Response
 
     var status: HTTPStatus {
@@ -375,8 +399,14 @@ struct VaporServerResponse: ServerResponse {
         return result
     }
 
-    var body: Data {
-        guard let buffer = response.body.buffer else { return Data() }
-        return Data(buffer: buffer)
+    /// ヘッダーを追加したレスポンスを返す
+    ///
+    /// VaporのResponseはクラスなので、直接ヘッダーを変更できます。
+    /// ストリーミングボディを保持したまま、ヘッダーを追加します。
+    func withAddedHeaders(_ additionalHeaders: [String: String]) -> VaporResponse {
+        for (key, value) in additionalHeaders {
+            response.headers.replaceOrAdd(name: HTTPHeaders.Name(key), value: value)
+        }
+        return self
     }
 }
