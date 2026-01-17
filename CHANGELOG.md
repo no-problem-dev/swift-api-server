@@ -145,3 +145,5 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 <!-- Auto-generated on 2026-01-10T04:36:59Z by release workflow -->
 
 <!-- Auto-generated on 2026-01-11T13:32:53Z by release workflow -->
+
+<!-- Auto-generated on 2026-01-17T12:06:44Z by release workflow -->
