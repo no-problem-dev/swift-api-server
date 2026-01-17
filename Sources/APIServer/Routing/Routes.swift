@@ -44,6 +44,27 @@ public protocol Routes: Sendable {
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
+    // MARK: - Webhook Routes
+
+    /// Webhook POSTルートを登録
+    ///
+    /// リクエストボディとヘッダーの両方にアクセスできるエンドポイントを登録します。
+    /// Eventarc や他のWebhookサービスからのイベント受信に使用します。
+    @discardableResult
+    func webhook<Body: Decodable & Sendable>(
+        _ path: String...,
+        body: Body.Type,
+        handler: @escaping @Sendable (WebhookRequest<Body>) async throws -> HTTPStatus
+    ) -> Self
+
+    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    @discardableResult
+    func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
+        _ path: String...,
+        body: Body.Type,
+        handler: @escaping @Sendable (WebhookRequest<Body>) async throws -> Response
+    ) -> Self
+
     // MARK: - Grouping
 
     /// ルートグループを作成
