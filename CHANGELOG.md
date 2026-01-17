@@ -9,6 +9,27 @@
 
 なし
 
+## [1.0.6] - 2026-01-17
+
+### 追加
+
+- **Webhook ルートサポート**: Eventarc/CloudEvents 統合用の Webhook エンドポイント機能
+  - `WebhookRequest<Body>`: リクエストボディとヘッダーを保持する型
+  - `WebhookHeaders`: HTTP ヘッダーアクセス用の型（大文字小文字を無視）
+  - `Routes` プロトコルに `webhook()` メソッドを追加
+  - ステータスのみ返すハンドラーとレスポンスボディ付きハンドラーの両方をサポート
+  - `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup` への実装
+
+### 使用例
+
+```swift
+routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
+    let headers = CloudEventHeaders(from: request.headers.all)
+    print("Event type: \(headers.type ?? "unknown")")
+    return HTTPStatus.ok
+}
+```
+
 ## [1.0.5] - 2026-01-11
 
 ### 追加
@@ -109,7 +130,8 @@
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.1...v1.0.3
