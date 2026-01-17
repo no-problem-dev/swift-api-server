@@ -20,6 +20,22 @@ public struct WebhookRequest<Body: Decodable & Sendable>: Sendable {
     }
 }
 
+/// 生バイナリデータ用の Webhook リクエストコンテキスト
+///
+/// Protobuf などの非JSON形式のリクエストボディを扱うために使用します。
+public struct RawWebhookRequest: Sendable {
+    /// 生のリクエストボディデータ
+    public let data: Data
+
+    /// HTTPヘッダー
+    public let headers: WebhookHeaders
+
+    init(data: Data, headers: WebhookHeaders) {
+        self.data = data
+        self.headers = headers
+    }
+}
+
 /// Webhook ヘッダー
 ///
 /// HTTPヘッダーへの読み取りアクセスを提供します。
@@ -114,6 +130,28 @@ extension VaporServerApplication {
         }
         return self
     }
+
+    /// Webhook POSTルートを登録（生バイナリデータ）
+    ///
+    /// Protobuf などの非JSON形式のリクエストボディを受け取るエンドポイント。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント
+    ///   - handler: RawWebhookRequest を受け取り HTTPStatus を返すハンドラー
+    /// - Returns: Self（メソッドチェーン用）
+    @discardableResult
+    public func webhookRaw(
+        _ path: String...,
+        handler: @escaping @Sendable (RawWebhookRequest) async throws -> HTTPStatus
+    ) -> Self {
+        let components = path.map { PathComponent(stringLiteral: $0) }
+        app.on(.POST, components) { request async throws -> Vapor.Response in
+            let webhookRequest = try WebhookBuilder.buildRawRequest(from: request)
+            let status = try await handler(webhookRequest)
+            return Vapor.Response(status: .init(statusCode: status.code))
+        }
+        return self
+    }
 }
 
 // MARK: - Webhook Route Extensions for VaporRoutes
@@ -150,6 +188,21 @@ extension VaporRoutes {
             var headers = Vapor.HTTPHeaders()
             headers.contentType = .json
             return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+        }
+        return self
+    }
+
+    /// Webhook POSTルートを登録（生バイナリデータ）
+    @discardableResult
+    public func webhookRaw(
+        _ path: String...,
+        handler: @escaping @Sendable (RawWebhookRequest) async throws -> HTTPStatus
+    ) -> Self {
+        let components = path.map { PathComponent(stringLiteral: $0) }
+        routes.on(.POST, components) { request async throws -> Vapor.Response in
+            let webhookRequest = try WebhookBuilder.buildRawRequest(from: request)
+            let status = try await handler(webhookRequest)
+            return Vapor.Response(status: .init(statusCode: status.code))
         }
         return self
     }
@@ -192,6 +245,21 @@ extension VaporRouteGroup {
         }
         return self
     }
+
+    /// Webhook POSTルートを登録（生バイナリデータ）
+    @discardableResult
+    public func webhookRaw(
+        _ path: String...,
+        handler: @escaping @Sendable (RawWebhookRequest) async throws -> HTTPStatus
+    ) -> Self {
+        let components = path.map { PathComponent(stringLiteral: $0) }
+        routes.on(.POST, components) { request async throws -> Vapor.Response in
+            let webhookRequest = try WebhookBuilder.buildRawRequest(from: request)
+            let status = try await handler(webhookRequest)
+            return Vapor.Response(status: .init(statusCode: status.code))
+        }
+        return self
+    }
 }
 
 // MARK: - Webhook Route Extensions for ServerRouteGroup
@@ -231,6 +299,21 @@ extension ServerRouteGroup {
         }
         return self
     }
+
+    /// Webhook POSTルートを登録（生バイナリデータ）
+    @discardableResult
+    public func webhookRaw(
+        _ path: String...,
+        handler: @escaping @Sendable (RawWebhookRequest) async throws -> HTTPStatus
+    ) -> Self {
+        let components = path.map { PathComponent(stringLiteral: $0) }
+        routes.on(.POST, components) { request async throws -> Vapor.Response in
+            let webhookRequest = try WebhookBuilder.buildRawRequest(from: request)
+            let status = try await handler(webhookRequest)
+            return Vapor.Response(status: .init(statusCode: status.code))
+        }
+        return self
+    }
 }
 
 // MARK: - Webhook Builder
@@ -251,5 +334,16 @@ enum WebhookBuilder {
         let headers = WebhookHeaders(from: request.headers)
 
         return WebhookRequest(body: body, headers: headers)
+    }
+
+    static func buildRawRequest(from request: Request) throws -> RawWebhookRequest {
+        guard let buffer = request.body.data else {
+            throw Abort(.badRequest, reason: "Request body is empty")
+        }
+
+        let data = Data(buffer: buffer)
+        let headers = WebhookHeaders(from: request.headers)
+
+        return RawWebhookRequest(data: data, headers: headers)
     }
 }

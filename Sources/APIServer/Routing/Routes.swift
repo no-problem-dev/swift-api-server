@@ -65,6 +65,16 @@ public protocol Routes: Sendable {
         handler: @escaping @Sendable (WebhookRequest<Body>) async throws -> Response
     ) -> Self
 
+    /// Webhook POSTルートを登録（生バイナリデータ）
+    ///
+    /// Protobuf などの非JSON形式のリクエストボディを受け取るエンドポイントを登録します。
+    /// Content-Type に関係なく、生のバイナリデータをそのまま渡します。
+    @discardableResult
+    func webhookRaw(
+        _ path: String...,
+        handler: @escaping @Sendable (RawWebhookRequest) async throws -> HTTPStatus
+    ) -> Self
+
     // MARK: - Grouping
 
     /// ルートグループを作成
