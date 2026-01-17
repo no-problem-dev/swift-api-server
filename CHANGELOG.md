@@ -9,6 +9,29 @@
 
 なし
 
+## [1.0.7] - 2026-01-17
+
+### 追加
+
+- **Raw Webhook サポート**: Protobuf 等の非JSON形式のリクエストボディ対応
+  - `RawWebhookRequest`: 生バイナリデータとヘッダーを保持する型
+  - `Routes` プロトコルに `webhookRaw()` メソッドを追加
+  - `VaporServerApplication`, `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup` への実装
+  - `WebhookBuilder.buildRawRequest` ヘルパーメソッド
+
+### 使用例
+
+```swift
+// Eventarc Firestore トリガー（Protobuf形式）
+routes.webhookRaw("firestore-event") { request in
+    let event = try FirestoreProtobufDecoder.decode(request.data)
+    let headers = CloudEventHeaders(from: request.headers.all)
+    print("Event type: \(headers.type ?? "unknown")")
+    // イベント処理...
+    return HTTPStatus.ok
+}
+```
+
 ## [1.0.6] - 2026-01-17
 
 ### 追加
@@ -130,7 +153,8 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.6...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.3...v1.0.4
@@ -145,3 +169,5 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 <!-- Auto-generated on 2026-01-10T04:36:59Z by release workflow -->
 
 <!-- Auto-generated on 2026-01-11T13:32:53Z by release workflow -->
+
+<!-- Auto-generated on 2026-01-17T12:06:44Z by release workflow -->
