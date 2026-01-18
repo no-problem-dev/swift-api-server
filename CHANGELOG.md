@@ -9,6 +9,23 @@
 
 なし
 
+## [1.0.8] - 2026-01-18
+
+### 追加
+
+- **最大リクエストボディサイズ設定**: 大きなファイルアップロード（Base64画像など）に対応
+  - `setMaxBodySize(_ bytes: Int)`: バイト数で指定
+  - `setMaxBodySize(_ size: String)`: 文字列で指定（例: "10mb", "500kb", "1gb"）
+
+### 使用例
+
+```swift
+let server = try await Server.create()
+server.setMaxBodySize("10mb")  // 10MB まで受け付け
+// or
+server.setMaxBodySize(10 * 1024 * 1024)  // 10MB
+```
+
 ## [1.0.7] - 2026-01-17
 
 ### 追加
@@ -153,7 +170,8 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 - ErrorMiddlewareTests: エラーハンドリングテスト
 - DecodeTests: リクエストパラメータデコードテスト
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.7...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.4...v1.0.5
@@ -171,3 +189,5 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 <!-- Auto-generated on 2026-01-11T13:32:53Z by release workflow -->
 
 <!-- Auto-generated on 2026-01-17T12:06:44Z by release workflow -->
+
+<!-- Auto-generated on 2026-01-17T12:48:14Z by release workflow -->
