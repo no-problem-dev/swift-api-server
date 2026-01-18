@@ -51,6 +51,22 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         app.middleware.use(APIContractErrorMiddleware())
     }
 
+    /// 最大リクエストボディサイズを設定
+    ///
+    /// デフォルトは16KB。大きなファイルアップロードを受け付ける場合は増やしてください。
+    /// - Parameter bytes: 最大バイト数
+    public func setMaxBodySize(_ bytes: Int) {
+        app.routes.defaultMaxBodySize = ByteCount(value: bytes)
+    }
+
+    /// 最大リクエストボディサイズを設定（文字列指定）
+    ///
+    /// 例: "10mb", "500kb", "1gb"
+    /// - Parameter size: サイズ文字列
+    public func setMaxBodySize(_ size: String) {
+        app.routes.defaultMaxBodySize = ByteCount(stringLiteral: size)
+    }
+
     /// サーバーを実行
     public func run() async throws {
         try await app.execute()
