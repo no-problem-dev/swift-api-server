@@ -73,8 +73,9 @@ extension Request {
             }
             return .anonymous
 
-        case .required:
+        case .bearer, .apiKey, .queryParam:
             // 必須認証 - ユーザーIDがなければエラー
+            // (新 API では .required → .bearer/.apiKey/.queryParam に細分化)
             guard let userId = self.authenticatedUserId else {
                 throw HTTPError.unauthorized
             }
