@@ -1,3 +1,5 @@
+import Foundation
+
 /// サーバー実行環境
 public enum ServerEnvironment: String, Sendable {
     case development
@@ -33,5 +35,3 @@ public enum ServerEnvironment: String, Sendable {
         ProcessInfo.processInfo.environment[key]
     }
 }
-
-import Foundation

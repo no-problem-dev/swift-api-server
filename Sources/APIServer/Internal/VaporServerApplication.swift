@@ -123,7 +123,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.GET, components) { request async throws -> Vapor.Response in
-            let context = Self.buildContext(from: request)
+            let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
             return try Self.encodeResponse(result)
         }
@@ -138,7 +138,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.POST, components) { request async throws -> Vapor.Response in
-            let context = Self.buildContext(from: request)
+            let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
             return try Self.encodeResponse(result)
         }
@@ -160,13 +160,6 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         var headers = HTTPHeaders()
         headers.contentType = .json
         return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
-    }
-
-    static func buildContext(from request: Request) -> ServiceContext {
-        if let userId = request.auth.get(AuthenticatedUser.self)?.id {
-            return .authenticated(userId: userId)
-        }
-        return .anonymous
     }
 }
 
@@ -212,7 +205,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.GET, components) { request async throws -> Vapor.Response in
-            let context = buildContext(from: request)
+            let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
             return try encodeResponse(result)
         }
@@ -227,7 +220,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
     ) -> Self {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.POST, components) { request async throws -> Vapor.Response in
-            let context = buildContext(from: request)
+            let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
             return try encodeResponse(result)
         }
@@ -245,13 +238,6 @@ public struct ServerRouteGroup: @unchecked Sendable {
         var headers = HTTPHeaders()
         headers.contentType = .json
         return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
-    }
-
-    private func buildContext(from request: Request) -> ServiceContext {
-        if let userId = request.auth.get(AuthenticatedUser.self)?.id {
-            return .authenticated(userId: userId)
-        }
-        return .anonymous
     }
 }
 
