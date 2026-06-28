@@ -56,7 +56,15 @@ public struct SSEStreamResponse<Event: Encodable & Sendable>: StreamResponse, He
         self.eventTypeMapper = eventTypeMapper
     }
 
-    /// カスタムヘッダー付きSSEレスポンスを作成
+    /// カスタムヘッダー付き SSE レスポンスを作成する。
+    ///
+    /// SSE 必須ヘッダー（`Content-Type: text/event-stream` 等）は自動でマージされる。
+    ///
+    /// - Parameters:
+    ///   - status: HTTP ステータス（省略時 `.ok`）
+    ///   - headers: 追加 HTTP ヘッダー
+    ///   - events: イベントストリーム
+    ///   - eventTypeMapper: イベントから SSE `event` フィールド名を返すクロージャ（`nil` で省略）
     public init(
         status: HTTPStatus = .ok,
         headers: [String: String],
@@ -105,6 +113,11 @@ public struct AnyStreamResponse: ServerResponse, @unchecked Sendable {
     /// 内部で保持する元のレスポンス（Vapor Response等）
     internal let underlyingResponse: Any
 
+    /// 型消去されたストリームレスポンスを作成する。
+    ///
+    /// - Parameters:
+    ///   - response: ステータスとヘッダーを提供する元レスポンス
+    ///   - underlying: 内部で保持するフレームワーク固有の実オブジェクト（例: Vapor の `Response`）
     public init<R: ServerResponse>(wrapping response: R, underlying: Any) {
         self.status = response.status
         self.headers = response.headers

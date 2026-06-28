@@ -3,6 +3,13 @@ public struct HTTPStatus: Sendable, Equatable, Hashable {
     public let code: Int
     public let reasonPhrase: String
 
+    /// カスタム HTTP ステータスコードを作成する。
+    ///
+    /// 標準的なケースには `.ok`、`.notFound` 等の静的プロパティを使用すること。
+    ///
+    /// - Parameters:
+    ///   - code: HTTP ステータスコード（例: 200、404）
+    ///   - reasonPhrase: 理由フレーズ（省略時は空文字）
     public init(code: Int, reasonPhrase: String = "") {
         self.code = code
         self.reasonPhrase = reasonPhrase

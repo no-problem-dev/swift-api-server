@@ -43,7 +43,7 @@ extension VaporServerApplication {
     /// ```swift
     /// server.sse("user", "events") { context in
     ///     guard case .authenticated(let userId) = context else {
-    ///         throw APIError.unauthorized
+    ///         throw HTTPError.unauthorized
     ///     }
     ///     return userEventStream(for: userId)
     /// }

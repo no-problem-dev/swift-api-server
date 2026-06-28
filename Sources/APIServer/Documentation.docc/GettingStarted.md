@@ -1,17 +1,17 @@
 # はじめに
 
-APIServerを使ってVaporベースのサーバーを構築する基本的な方法を学びます。
+APIServer を使って Vapor ベースのサーバーを構築する基本的な方法。
 
 ## Overview
 
-APIServerは、Vaporウェブフレームワークをラップしてアプリケーションコードから
-Vapor固有の実装を隠蔽するライブラリです。
+APIServer は、Vapor ウェブフレームワークをラップしてアプリケーションコードから
+Vapor 固有の実装を隠蔽するライブラリ。
 
 ## インストール
 
 ### Swift Package Manager
 
-`Package.swift`に以下を追加してください：
+`Package.swift` に以下を追加する：
 
 ```swift
 dependencies: [
@@ -34,62 +34,78 @@ dependencies: [
 
 ### サーバーの作成
 
+`Server.create()` は非同期なので `async` コンテキストから呼び出す：
+
 ```swift
 import APIServer
 
 // 環境を自動検出してサーバーを作成
-let app = try Server.create(environment: .detect())
+let server = try await Server.create()
 
 // または明示的に環境を指定
-let app = try Server.create(environment: .development)
+let server = try await Server.create(environment: .development)
 ```
 
 ### ルートの登録
 
-直接ルートを登録する方法：
+クロージャの戻り値は自動的に JSON エンコードされる：
 
 ```swift
-app.routes.get("health") { req async throws -> ServerResponse in
-    BasicServerResponse(status: .ok, body: ["status": "healthy"])
+// GET /health
+server.get("health") {
+    ["status": "healthy"]
 }
 
-app.routes.post("users") { req async throws -> ServerResponse in
-    // リクエストの処理
-    BasicServerResponse(status: .created, body: ["id": 1])
+// GET /users/:id（パスパラメータはルートパターンで指定）
+server.get("users", ":id") {
+    UserOutput(id: 1, name: "Alice")
+}
+
+// POST /items
+server.post("items") {
+    ItemOutput(id: 42, created: true)
 }
 ```
 
-### APIContractを使用したルーティング
+### ルートグループ
 
-推奨されるアプローチは、APIContractを使用することです：
+共通プレフィックスを持つルートはグループ化できる：
+
+```swift
+let v1 = server.group("api", "v1")
+
+v1.get("status") {
+    ["version": "1.0"]
+}
+
+v1.post("echo") {
+    EchoOutput(message: "ok")
+}
+```
+
+### APIService を使ったルーティング
+
+`APIContract` を使った型安全なルーティング。
+`APIService` を実装したサービスを `routes.mount(_:)` で登録する：
 
 ```swift
 import APIServer
 import APIContract
 
-struct UserAPI: APIContract {
-    static let method: HTTPMethodType = .get
-    static let pathTemplate: String = "/users/:id"
-
-    typealias PathInput = UserPathInput
-    typealias QueryInput = EmptyInput
-    typealias BodyInput = EmptyInput
-    typealias Output = UserOutput
+// APIService の実装
+struct UserService: APIService {
+    typealias Group = UserAPIGroup
 }
 
-// APIContractのマウント
-try app.mount(UserAPI.self) { context in
-    guard let id = Int(context.input.path.id) else {
-        throw APIContractError.invalidInput(message: "Invalid user ID")
-    }
-    return UserOutput(id: id, name: "User \(id)")
-}
+// マウントして registerAll で一括登録
+let service = UserService()
+UserAPIGroup.registerAll(server.routes.mount(service))
 ```
 
 ### サーバーの起動
 
 ```swift
-try await app.run()
+try await server.run()
 ```
 
 ## 次のステップ

@@ -1,6 +1,6 @@
 # ``APIServer``
 
-Vaporウェブフレームワークの抽象化レイヤー。
+Vapor ウェブフレームワークの抽象化レイヤー。
 
 @Metadata {
     @PageColor(blue)
@@ -8,36 +8,36 @@ Vaporウェブフレームワークの抽象化レイヤー。
 
 ## Overview
 
-APIServerは、アプリケーションコードをVapor固有の実装から独立させるための抽象化レイヤーです。
-プロトコルベースの設計により、テスト容易性と将来の拡張性を確保しています。
+APIServer は、アプリケーションコードを Vapor 固有の実装から独立させる抽象化レイヤー。
+プロトコルベースの設計により、テスト容易性と将来の拡張性を確保する。
 
 ### 特徴
 
-- **Vapor抽象化**: アプリケーションコードがVaporに直接依存しない
+- **Vapor 抽象化**: アプリケーションコードが Vapor に直接依存しない
 - **プロトコルベース設計**: テストしやすく、将来の拡張性を確保
-- **APIContract統合**: コントラクトベースのAPI定義と自動ルーティング
+- **APIContract 統合**: `APIService` ベースの自動ルーティング
 - **ミドルウェアシステム**: CORS、認証、エラーハンドリングを標準装備
-- **Sendable対応**: Swift 6の厳格な並行処理に対応
+- **Sendable 対応**: Swift 6 の厳格な並行処理に対応
 
 ### クイックスタート
 
 ```swift
 import APIServer
-import APIContract
 
-// サーバーの作成と起動
-let app = try Server.create(environment: .detect())
+// サーバーを作成（非同期初期化）
+let server = try await Server.create()
 
-// APIContractのマウント
-try app.mount(UserAPI.self) { context in
-    UserOutput(id: context.input.path.id, name: "User")
+// ルートを登録
+server.get("health") {
+    ["status": "healthy"]
 }
 
-// ミドルウェアの追加
-app.middleware.use(CORSMiddleware(allowedOrigins: ["*"]))
-app.middleware.use(APIContractErrorMiddleware())
+// ミドルウェアを追加
+server.use(CORSServerMiddleware())
+server.useErrorMiddleware()
 
-try await app.run()
+// サーバーを起動
+try await server.run()
 ```
 
 ## Topics
@@ -53,29 +53,44 @@ try await app.run()
 - ``ServerEnvironment``
 - ``ServerLogger``
 - ``HTTPStatus``
+- ``Server``
 
 ### ルーティング
 
-- ``RouteRegistrar``
+- ``Routes``
 - ``RouteGroup``
-- ``MountedGroup``
+- ``ServerRouteGroup``
+- ``APIRoutes``
 
 ### ミドルウェア
 
 - ``ServerMiddleware``
-- ``CORSMiddleware``
-- ``AuthMiddleware``
-- ``APIContractErrorMiddleware``
+- ``CORSServerMiddleware``
+- ``CORSConfiguration``
 - <doc:Middleware>
 
-### リクエスト/レスポンス
+### リクエスト／レスポンス
 
 - ``ServerRequest``
 - ``ServerResponse``
-- ``BasicServerResponse``
+- ``HeaderModifiableResponse``
+- ``DataResponse``
+- ``BasicDataResponse``
+- ``StreamResponse``
+- ``SSEStreamResponse``
+
+### SSE（Server-Sent Events）
+
+- ``SSEEvent``
+- ``SSEEncodingError``
+- ``SSEConstants``
+
+### Webhook
+
+- ``WebhookRequest``
+- ``RawWebhookRequest``
+- ``WebhookHeaders``
 
 ### 認証
 
-- ``AuthenticationProvider``
-- ``AuthenticatedUser``
 - <doc:Authentication>

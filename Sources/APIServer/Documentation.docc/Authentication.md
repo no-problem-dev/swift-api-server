@@ -1,49 +1,50 @@
 # 認証
 
-Bearer トークンによる認証を実装する方法を学びます。
+Bearer トークンによる認証を実装する方法。
 
 ## Overview
 
-APIServerは、`AuthMiddleware`と`AuthenticationProvider`プロトコルを使用して
-柔軟な認証システムを提供します。
+APIServer は、`AuthenticationProvider` プロトコルと `server.useAuth(provider:)` を使って
+柔軟な認証システムを提供する。
 
 ## AuthenticationProvider の実装
 
-認証ロジックをカスタマイズするには、`AuthenticationProvider`プロトコルを実装します：
+認証ロジックをカスタマイズするには `AuthenticationProvider` を実装する。
+`verifyToken(_:)` がトークンを検証し、成功時はユーザー ID を返す（失敗時は `throw`）：
 
 ```swift
 struct MyAuthProvider: AuthenticationProvider {
-    func authenticate(token: String) async throws -> String? {
-        // トークンを検証
-        // 有効な場合はユーザーIDを返す
-        // 無効な場合はnilを返す
-
-        // 例: JWTトークンの検証
+    func verifyToken(_ token: String) async throws -> String {
+        // トークンを検証してユーザー ID を返す
+        // 無効なトークンの場合は throw する
         guard let userId = try? verifyJWT(token) else {
-            return nil
+            throw AuthenticationError.invalidToken("Invalid JWT")
         }
         return userId
     }
 }
 ```
 
-## AuthMiddleware の設定
+## 認証ミドルウェアの設定
+
+`server.useAuth(provider:)` で認証を有効化する：
 
 ```swift
-let authProvider = MyAuthProvider()
-app.middleware.use(AuthMiddleware(provider: authProvider))
+let server = try await Server.create()
+
+server.useAuth(MyAuthProvider())
+server.useErrorMiddleware()  // 認証エラーを JSON レスポンスに変換
 ```
 
 ## 認証状態へのアクセス
 
-APIContract ハンドラ内で認証されたユーザーにアクセス：
+APIService ハンドラ内では `ServiceContext` から認証情報を取得する。
+`context.userId` で認証済みユーザー ID（未認証時は `nil`）にアクセスできる：
 
 ```swift
-try app.mount(ProfileAPI.self) { context in
+func getProfile(input: ProfileInput, context: ServiceContext) async throws -> ProfileOutput {
     // 認証が必要なエンドポイント
-    guard let userId = context.authenticatedUserId else {
-        throw APIContractError.unauthorized(message: "Authentication required")
-    }
+    let userId = try context.requireUserId()  // 未認証なら HTTPError.unauthorized を throw
 
     // ユーザー情報を取得して返す
     let user = try await fetchUser(id: userId)
@@ -51,43 +52,53 @@ try app.mount(ProfileAPI.self) { context in
 }
 ```
 
-## 認証のスキップ
-
-特定のエンドポイントで認証をスキップするには、
-`AuthMiddleware`を使用しないルートグループを作成するか、
-ミドルウェア内で特定のパスを除外します：
-
-```swift
-struct ConditionalAuthMiddleware: ServerMiddleware {
-    let provider: AuthenticationProvider
-    let excludedPaths: Set<String>
-
-    func respond(
-        to request: ServerRequest,
-        chainingTo next: @escaping (ServerRequest) async throws -> ServerResponse
-    ) async throws -> ServerResponse {
-        // 除外パスの場合は認証をスキップ
-        if excludedPaths.contains(request.url.path) {
-            return try await next(request)
-        }
-
-        // 通常の認証処理
-        // ...
-    }
-}
-
-app.middleware.use(ConditionalAuthMiddleware(
-    provider: MyAuthProvider(),
-    excludedPaths: ["/health", "/public"]
-))
-```
+`context.userId` は任意アクセス（`nil` チェックが必要）、
+`context.requireUserId()` は必須アクセス（未認証なら自動で 401 エラー）。
 
 ## Bearer トークン形式
 
-`AuthMiddleware`は以下の形式のAuthorizationヘッダーを期待します：
+認証ミドルウェアは以下の形式の `Authorization` ヘッダーを検出する：
 
 ```
 Authorization: Bearer <token>
 ```
 
-トークンの部分が`AuthenticationProvider.authenticate(token:)`メソッドに渡されます。
+`<token>` の部分が `AuthenticationProvider.verifyToken(_:)` に渡される。
+ヘッダーがない場合や検証失敗時でも次のハンドラに処理を渡す（エンドポイントの
+`auth` 要件で最終的な認証チェックが行われる）。
+
+## カスタム認証ミドルウェア
+
+`ServerMiddleware` を実装して独自の認証ロジックを追加することも可能：
+
+```swift
+struct ConditionalAuthMiddleware: ServerMiddleware {
+    let provider: any AuthenticationProvider
+    let excludedPaths: Set<String>
+
+    func handle(
+        request: any ServerRequest,
+        next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
+    ) async throws -> any ServerResponse {
+        // 除外パスの場合は認証をスキップ
+        if excludedPaths.contains(request.url.path) {
+            return try await next(request)
+        }
+
+        // Authorization ヘッダーからトークンを抽出
+        guard let authHeader = request.headers["Authorization"],
+              authHeader.lowercased().hasPrefix("bearer ") else {
+            return try await next(request)
+        }
+
+        let token = String(authHeader.dropFirst("bearer ".count))
+        // カスタム認証ロジック...
+        return try await next(request)
+    }
+}
+
+server.use(ConditionalAuthMiddleware(
+    provider: MyAuthProvider(),
+    excludedPaths: ["/health", "/public"]
+))
+```

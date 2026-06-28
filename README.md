@@ -1,61 +1,47 @@
 # APIServer
 
-[English](README_EN.md) | 日本語
+English | [日本語](./README.ja.md)
 
-Vapor ウェブフレームワークの抽象化レイヤー。アプリケーションコードを Vapor 固有の実装から独立させます。
+An abstraction layer over the Vapor web framework. Keeps application code independent of Vapor-specific implementations.
 
 ![Swift 6.0+](https://img.shields.io/badge/Swift-6.0+-orange.svg)
 ![macOS 14+](https://img.shields.io/badge/macOS-14+-purple.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## 特徴
+## Features
 
-- **Vapor 抽象化**: アプリケーションコードが Vapor に直接依存しない
-- **プロトコルベース設計**: テストしやすく、将来の拡張性を確保
-- **APIContract 統合**: コントラクトベースの API 定義と自動ルーティング
-- **ミドルウェアシステム**: CORS、認証、エラーハンドリングを標準装備
-- **Sendable 対応**: Swift 6 の厳格な並行処理に対応
+- **Vapor Abstraction**: Application code doesn't depend directly on Vapor
+- **Protocol-Based Design**: Easy to test and extensible for the future
+- **APIContract Integration**: Type-safe routing via `APIService`
+- **Middleware System**: CORS, authentication, and error handling included
+- **Sendable Compliant**: Supports Swift 6's strict concurrency
 
-## クイックスタート
+## Quick Start
 
 ```swift
 import APIServer
-import APIContract
 
-// APIContract を使用した API 定義
-struct UserAPI: APIContract {
-    static let method: HTTPMethodType = .get
-    static let pathTemplate: String = "/users/:id"
+// Create a server (async initialization)
+let server = try await Server.create()
 
-    typealias PathInput = UserPathInput
-    typealias QueryInput = EmptyInput
-    typealias BodyInput = EmptyInput
-    typealias Output = UserOutput
+// Register routes — closures are automatically JSON-encoded
+server.get("health") {
+    ["status": "healthy"]
 }
 
-// サーバーの作成と起動
-let app = try Server.create(environment: .detect())
+// Add middleware
+server.use(CORSServerMiddleware())
+server.useErrorMiddleware()
 
-// APIContract のマウント
-try app.mount(UserAPI.self) { context in
-    guard let id = Int(context.input.path.id) else {
-        throw APIContractError.invalidInput(message: "Invalid user ID")
-    }
-    return UserOutput(id: id, name: "User \(id)")
-}
-
-// ミドルウェアの追加
-app.middleware.use(CORSMiddleware(allowedOrigins: ["*"]))
-app.middleware.use(APIContractErrorMiddleware())
-
-try await app.run()
+// Start the server
+try await server.run()
 ```
 
-## インストール
+## Installation
 
 ### Swift Package Manager
 
-`Package.swift` に以下を追加：
+Add to your `Package.swift`:
 
 ```swift
 dependencies: [
@@ -63,7 +49,7 @@ dependencies: [
 ]
 ```
 
-ターゲットに追加：
+Add to your target:
 
 ```swift
 .target(
@@ -74,117 +60,124 @@ dependencies: [
 )
 ```
 
-## コアコンポーネント
+## Core Components
 
 ### ServerApplication
 
-サーバーアプリケーションのプロトコル定義：
+Protocol definition for server applications:
 
 ```swift
 public protocol ServerApplication: Sendable {
-    var routes: any RouteRegistrar { get }
-    var logger: any ServerLogger { get }
-    var middleware: MiddlewareConfiguration { get }
+    associatedtype Routes: APIServer.Routes
+    var environment: ServerEnvironment { get }
+    var logger: ServerLogger { get }
+    var routes: Routes { get }
 
+    func use(_ middleware: any ServerMiddleware)
     func run() async throws
     func shutdown() async throws
 }
 ```
 
+The concrete implementation returned by `Server.create()` is `VaporServerApplication`.
+
 ### ServerEnvironment
 
-環境設定の抽象化：
+Environment configuration abstraction. Auto-detected from the `SWIFT_ENV` or `VAPOR_ENV` environment variable:
 
 ```swift
-let environment = ServerEnvironment.detect() // ENVIRONMENT 環境変数から自動検出
+let environment = ServerEnvironment.detect() // reads SWIFT_ENV or VAPOR_ENV
 
 switch environment {
 case .development:
-    // 開発環境の設定
+    // Development settings
 case .testing:
-    // テスト環境の設定
+    // Testing settings
 case .production:
-    // 本番環境の設定
+    // Production settings
 }
 ```
 
-### ルーティング
+### Routing
 
-直接ルートまたは APIContract を使用：
+Direct routes or `APIService`-based routing:
 
 ```swift
-// 直接ルート登録
-app.routes.get("health") { req async throws -> ServerResponse in
-    BasicServerResponse(status: .ok, body: ["status": "healthy"])
+// Direct route registration
+server.get("health") {
+    ["status": "healthy"]
 }
 
-// APIContract を使用
-app.mount(UserAPI.self) { context in
-    UserOutput(id: 1, name: "User")
-}
+// Route group
+let v1 = server.group("api", "v1")
+v1.get("status") { ["version": "1.0"] }
+
+// APIService-based routing
+let service = MyAPIService()
+MyAPIGroup.registerAll(server.routes.mount(service))
 ```
 
-### ミドルウェア
+### Middleware
 
-| ミドルウェア | 用途 |
-|-------------|------|
-| `CORSMiddleware` | CORS ヘッダー設定 |
-| `AuthMiddleware` | Bearer トークン認証 |
-| `APIContractErrorMiddleware` | エラーを JSON レスポンスに変換 |
+| Middleware | How to Add | Purpose |
+|------------|-----------|---------|
+| `CORSServerMiddleware` | `server.use(CORSServerMiddleware())` | CORS header configuration |
+| Authentication | `server.useAuth(provider)` | Bearer token authentication |
+| Error handling | `server.useErrorMiddleware()` | Convert errors to JSON responses |
 
 ```swift
-// CORS 設定
-app.middleware.use(CORSMiddleware(
+// CORS configuration
+server.use(CORSServerMiddleware(configuration: .custom(
     allowedOrigins: ["https://example.com"],
-    allowedMethods: [.GET, .POST, .PUT, .DELETE],
+    allowedMethods: [.get, .post, .put, .delete],
     allowedHeaders: ["Content-Type", "Authorization"],
     allowCredentials: true
-))
+)))
 
-// 認証設定
-app.middleware.use(AuthMiddleware(provider: MyAuthProvider()))
+// Authentication
+server.useAuth(MyAuthProvider())  // MyAuthProvider: AuthenticationProvider
 
-// エラーハンドリング
-app.middleware.use(APIContractErrorMiddleware())
+// Error handling
+server.useErrorMiddleware()
 ```
 
 ### HTTPStatus
 
-一般的な HTTP ステータスコード：
+Common HTTP status codes:
 
-| ステータス | 説明 |
-|-----------|------|
-| `.ok` (200) | 成功 |
-| `.created` (201) | 作成成功 |
-| `.noContent` (204) | コンテンツなし |
-| `.badRequest` (400) | 不正なリクエスト |
-| `.unauthorized` (401) | 認証が必要 |
-| `.forbidden` (403) | アクセス禁止 |
-| `.notFound` (404) | 見つからない |
-| `.internalServerError` (500) | サーバーエラー |
+| Status | Description |
+|--------|-------------|
+| `.ok` (200) | Success |
+| `.created` (201) | Created |
+| `.noContent` (204) | No Content |
+| `.badRequest` (400) | Bad Request |
+| `.unauthorized` (401) | Unauthorized |
+| `.forbidden` (403) | Forbidden |
+| `.notFound` (404) | Not Found |
+| `.internalServerError` (500) | Internal Server Error |
 
-## 設計思想
+## Design Philosophy
 
-このライブラリは以下の原則に基づいて設計されています：
+This library is designed based on the following principles:
 
-1. **依存性の隠蔽**: Vapor は `Internal/` ディレクトリ内に隠蔽され、公開 API には現れない
-2. **プロトコル優先**: すべての抽象化は Swift プロトコルで定義
-3. **Sendable 準拠**: すべての公開型は `Sendable` を採用
-4. **ファクトリパターン**: `Server.create()` による依存性注入
+1. **Dependency Hiding**: Vapor is hidden in the `Internal/` directory and doesn't appear in the public API
+2. **Protocol First**: All abstractions are defined as Swift protocols
+3. **Sendable Compliance**: All public types adopt `Sendable`
+4. **Factory Pattern**: Dependency injection via `Server.create()`
 
-詳細な設計ドキュメントは [DESIGN.md](DESIGN.md) を参照してください。
+See [DESIGN.md](DESIGN.md) for detailed design documentation.
 
-## 依存関係
+## Dependencies
 
-| パッケージ | 用途 |
-|-----------|------|
-| [swift-api-contract](https://github.com/no-problem-dev/swift-api-contract) | コントラクトベース API 定義 |
-| [vapor](https://github.com/vapor/vapor) | 内部実装（公開 API には露出しない） |
+| Package | Purpose |
+|---------|---------|
+| [swift-api-contract](https://github.com/no-problem-dev/swift-api-contract) | Contract-based API definition |
+| [vapor](https://github.com/vapor/vapor) | Internal implementation (not exposed in public API) |
 
-## ドキュメント
+## Documentation
 
-詳細な API ドキュメントは [GitHub Pages](https://no-problem-dev.github.io/swift-api-server/documentation/apiserver/) で確認できます。
+Detailed API documentation is available at [GitHub Pages](https://no-problem-dev.github.io/swift-api-server/documentation/apiserver/).
 
-## ライセンス
+## License
 
-MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
+MIT License — See [LICENSE](LICENSE) for details.

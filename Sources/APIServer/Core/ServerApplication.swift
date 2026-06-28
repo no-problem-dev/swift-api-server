@@ -2,9 +2,9 @@ import APIContract
 
 /// サーバーアプリケーションプロトコル
 ///
-/// HTTPサーバーの抽象インターフェース。
+/// HTTP サーバーの抽象インターフェース。
 /// アプリケーション層はこのプロトコルを通じてサーバー機能にアクセスし、
-/// 具体的なフレームワーク（Vapor等）の詳細から分離されます。
+/// 具体的なフレームワーク（Vapor 等）の実装詳細から分離される。
 public protocol ServerApplication: Sendable {
     /// ルート登録インターフェース
     associatedtype Routes: APIServer.Routes
@@ -32,14 +32,14 @@ public protocol ServerApplication: Sendable {
 
 /// サーバーファクトリ
 ///
-/// サーバーアプリケーションを生成するためのファクトリクラス。
-/// 内部的にVaporを使用しますが、アプリケーション層からは隠蔽されます。
+/// サーバーアプリケーションを生成するファクトリ型。
+/// 内部的に Vapor を使用するが、アプリケーション層からは隠蔽される。
 ///
 /// ## 使用例
 /// ```swift
 /// let server = try await Server.create()
-/// server.use(CORSMiddleware())
-/// server.routes.get("health") { "OK" }
+/// server.use(CORSServerMiddleware())
+/// server.get("health") { "OK" }
 /// try await server.run()
 /// ```
 public enum Server {

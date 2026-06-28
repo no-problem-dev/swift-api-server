@@ -6,10 +6,10 @@ public enum ServerEnvironment: String, Sendable {
     case testing
     case production
 
-    /// 環境変数から実行環境を検出
+    /// 環境変数から実行環境を検出する。
     ///
-    /// `SWIFT_ENV` または `VAPOR_ENV` 環境変数を参照し、
-    /// 設定がない場合は `.development` を返します。
+    /// `SWIFT_ENV` または `VAPOR_ENV` 環境変数を参照する。
+    /// 両方とも未設定の場合は `.development` を返す。
     public static func detect() -> ServerEnvironment {
         if let env = ProcessInfo.processInfo.environment["SWIFT_ENV"] ??
                      ProcessInfo.processInfo.environment["VAPOR_ENV"] {

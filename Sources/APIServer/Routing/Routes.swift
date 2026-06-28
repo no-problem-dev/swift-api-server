@@ -89,4 +89,8 @@ public protocol Routes: Sendable {
 }
 
 /// ルートグループプロトコル
+///
+/// `Routes` を継承し、共通パスプレフィックス配下でルートをまとめる。
+/// `Routes.group()` の戻り値として使い、`Routes` 単体では表現しにくい
+/// サブパス単位の分離・再利用を実現する。
 public protocol RouteGroup: Routes {}

@@ -16,6 +16,12 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
 
     // MARK: - Simple Routes
 
+    /// GET ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -32,6 +38,12 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         return self
     }
 
+    /// POST ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -48,6 +60,12 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         return self
     }
 
+    /// PUT ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func put<Response: Encodable & Sendable>(
         _ path: String...,
@@ -64,6 +82,12 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         return self
     }
 
+    /// DELETE ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func delete<Response: Encodable & Sendable>(
         _ path: String...,
@@ -80,6 +104,12 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         return self
     }
 
+    /// PATCH ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -98,6 +128,10 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
 
     // MARK: - Grouping
 
+    /// 共通パスプレフィックスを持つルートグループを作成する。
+    ///
+    /// - Parameter path: グループのパスプレフィックス（可変長）
+    /// - Returns: `VaporRouteGroup`
     public func group(_ path: String...) -> VaporRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return VaporRouteGroup(routes: routes.grouped(components))
@@ -105,6 +139,10 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
+    /// `APIService` をマウントし、サービス定義からルートを自動登録する。
+    ///
+    /// - Parameter service: マウントする APIService インスタンス
+    /// - Returns: マウント結果の `APIRoutes`
     public func mount<S: APIService>(
         _ service: S
     ) -> APIRoutes<S.Group, S> {
@@ -118,6 +156,12 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - Simple Routes
 
+    /// GET ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -134,6 +178,12 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
+    /// POST ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -150,6 +200,12 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
+    /// PUT ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func put<Response: Encodable & Sendable>(
         _ path: String...,
@@ -166,6 +222,12 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
+    /// DELETE ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func delete<Response: Encodable & Sendable>(
         _ path: String...,
@@ -182,6 +244,12 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
+    /// PATCH ルートを登録する。
+    ///
+    /// - Parameters:
+    ///   - path: パスコンポーネント（可変長）
+    ///   - handler: レスポンスを返す非同期ハンドラー
+    /// - Returns: Self（メソッドチェーン用）
     @discardableResult
     public func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -200,6 +268,10 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - Grouping
 
+    /// サブグループを作成する。
+    ///
+    /// - Parameter path: サブグループのパスプレフィックス（可変長）
+    /// - Returns: `VaporRouteGroup`
     public func group(_ path: String...) -> VaporRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return VaporRouteGroup(routes: routes.grouped(components))
@@ -207,6 +279,10 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
+    /// `APIService` をマウントし、サービス定義からルートを自動登録する。
+    ///
+    /// - Parameter service: マウントする APIService インスタンス
+    /// - Returns: マウント結果の `APIRoutes`
     public func mount<S: APIService>(
         _ service: S
     ) -> APIRoutes<S.Group, S> {

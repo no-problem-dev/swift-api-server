@@ -1,76 +1,80 @@
 # ミドルウェア
 
-リクエスト/レスポンスパイプラインにミドルウェアを追加する方法を学びます。
+リクエスト／レスポンスパイプラインにミドルウェアを追加する方法。
 
 ## Overview
 
-APIServerは、リクエストとレスポンスの処理をカスタマイズするための
-ミドルウェアシステムを提供しています。
+APIServer は、リクエストとレスポンスの処理をカスタマイズするための
+ミドルウェアシステムを提供する。
 
 ## 組み込みミドルウェア
 
-### CORSMiddleware
+### CORSServerMiddleware
 
-Cross-Origin Resource Sharing（CORS）の設定：
+Cross-Origin Resource Sharing（CORS）の設定。
+`server.use(_:)` で追加する：
 
 ```swift
-app.middleware.use(CORSMiddleware(
+server.use(CORSServerMiddleware(configuration: .custom(
     allowedOrigins: ["https://example.com", "https://api.example.com"],
-    allowedMethods: [.GET, .POST, .PUT, .DELETE],
+    allowedMethods: [.get, .post, .put, .delete],
     allowedHeaders: ["Content-Type", "Authorization"],
     allowCredentials: true
-))
+)))
 ```
 
-すべてのオリジンを許可する場合：
+すべてのオリジンを許可する場合（デフォルト設定）：
 
 ```swift
-app.middleware.use(CORSMiddleware(allowedOrigins: ["*"]))
+server.use(CORSServerMiddleware())
 ```
 
-### AuthMiddleware
+### 認証ミドルウェア
 
-Bearer トークン認証：
+Bearer トークン認証。`server.useAuth(_:)` で追加する：
 
 ```swift
 struct MyAuthProvider: AuthenticationProvider {
-    func authenticate(token: String) async throws -> String? {
-        // トークンを検証してユーザーIDを返す
-        guard token == "valid-token" else { return nil }
+    func verifyToken(_ token: String) async throws -> String {
+        guard token == "valid-token" else {
+            throw AuthenticationError.invalidToken("Bad token")
+        }
         return "user-123"
     }
 }
 
-app.middleware.use(AuthMiddleware(provider: MyAuthProvider()))
+server.useAuth(MyAuthProvider())
 ```
 
-### APIContractErrorMiddleware
+### エラーハンドリングミドルウェア
 
-APIContractError を JSON レスポンスに変換：
+`APIContractError` を JSON レスポンスに変換する。
+`server.useErrorMiddleware()` で追加する：
 
 ```swift
-app.middleware.use(APIContractErrorMiddleware())
+server.useErrorMiddleware()
 ```
 
-これにより、以下のようなエラーレスポンスが生成されます：
+これにより、以下のようなエラーレスポンスが生成される：
 
 ```json
 {
-    "error": "invalidInput",
+    "errorCode": "INVALID_INPUT",
     "message": "User ID must be a positive integer"
 }
 ```
 
 ## カスタムミドルウェア
 
-独自のミドルウェアを実装する場合：
+`ServerMiddleware` を実装して独自のミドルウェアを作成する。
+メソッド名は `handle(request:next:)`：
 
 ```swift
 struct LoggingMiddleware: ServerMiddleware {
-    func respond(
-        to request: ServerRequest,
-        chainingTo next: @escaping (ServerRequest) async throws -> ServerResponse
-    ) async throws -> ServerResponse {
+    func handle(
+        request: any ServerRequest,
+        next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
+    ) async throws -> any ServerResponse {
         // リクエスト前の処理
         print("Request: \(request.method) \(request.url)")
 
@@ -78,28 +82,28 @@ struct LoggingMiddleware: ServerMiddleware {
         let response = try await next(request)
 
         // レスポンス後の処理
-        print("Response: \(response.status)")
+        print("Response: \(response.status.code)")
 
         return response
     }
 }
 
-app.middleware.use(LoggingMiddleware())
+server.use(LoggingMiddleware())
 ```
 
 ## ミドルウェアの順序
 
-ミドルウェアは登録された順序で実行されます。
+ミドルウェアは登録された順序で実行される。
 一般的な推奨順序：
 
-1. `CORSMiddleware` - CORS ヘッダーを最初に設定
-2. `LoggingMiddleware` - リクエストのログ記録
-3. `AuthMiddleware` - 認証チェック
-4. `APIContractErrorMiddleware` - エラーハンドリング（最後）
+1. `CORSServerMiddleware` — CORS ヘッダーを最初に設定
+2. カスタムロギングミドルウェア — リクエストのログ記録
+3. `server.useAuth(_:)` — 認証チェック
+4. `server.useErrorMiddleware()` — エラーハンドリング（最後）
 
 ```swift
-app.middleware.use(CORSMiddleware(allowedOrigins: ["*"]))
-app.middleware.use(LoggingMiddleware())
-app.middleware.use(AuthMiddleware(provider: MyAuthProvider()))
-app.middleware.use(APIContractErrorMiddleware())
+server.use(CORSServerMiddleware())
+server.use(LoggingMiddleware())
+server.useAuth(MyAuthProvider())
+server.useErrorMiddleware()
 ```

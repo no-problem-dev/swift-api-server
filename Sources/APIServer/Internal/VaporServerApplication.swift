@@ -46,14 +46,14 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// APIContractエラーミドルウェアを追加
     ///
-    /// APIContractErrorをJSONエラーレスポンスに変換します。
+    /// APIContractError を JSON エラーレスポンスに変換する。
     public func useErrorMiddleware() {
         app.middleware.use(APIContractErrorMiddleware())
     }
 
-    /// 最大リクエストボディサイズを設定
+    /// 最大リクエストボディサイズを設定する。
     ///
-    /// デフォルトは16KB。大きなファイルアップロードを受け付ける場合は増やしてください。
+    /// デフォルトは 16 KB。大きなファイルアップロードを受け付ける場合は増やす。
     /// - Parameter bytes: 最大バイト数
     public func setMaxBodySize(_ bytes: Int) {
         app.routes.defaultMaxBodySize = ByteCount(value: bytes)

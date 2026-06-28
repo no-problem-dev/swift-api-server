@@ -20,6 +20,12 @@ public struct BasicDataResponse: DataResponse {
     public let headers: [String: String]
     public let body: Data
 
+    /// バイナリボディを持つレスポンスを作成する。
+    ///
+    /// - Parameters:
+    ///   - status: HTTP ステータス（省略時 `.ok`）
+    ///   - headers: HTTP ヘッダー（省略時 空）
+    ///   - body: レスポンスボディのバイナリデータ（省略時 空）
     public init(
         status: HTTPStatus = .ok,
         headers: [String: String] = [:],
@@ -30,7 +36,16 @@ public struct BasicDataResponse: DataResponse {
         self.body = body
     }
 
-    /// JSONレスポンスを作成
+    /// Encodable な値を JSON エンコードしてレスポンスを作成する。
+    ///
+    /// `Content-Type: application/json` ヘッダーを自動で付与する。
+    ///
+    /// - Parameters:
+    ///   - status: HTTP ステータス（省略時 `.ok`）
+    ///   - headers: 追加 HTTP ヘッダー（省略時 空）
+    ///   - value: JSON エンコードする値
+    ///   - encoder: 使用する `JSONEncoder`（省略時 `.apiDefault`）
+    /// - Throws: JSON エンコード失敗時
     public init<T: Encodable>(
         status: HTTPStatus = .ok,
         headers: [String: String] = [:],
@@ -57,7 +72,9 @@ public struct BasicDataResponse: DataResponse {
 // MARK: - JSON Encoder Extension
 
 extension JSONEncoder {
-    /// APIデフォルトのJSONEncoder設定
+    /// API 標準の `JSONEncoder` 設定。
+    ///
+    /// `Date` を ISO 8601 形式にエンコードする。
     public static var apiDefault: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
