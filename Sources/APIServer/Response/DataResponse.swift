@@ -4,7 +4,7 @@ import Foundation
 ///
 /// 単一のレスポンスボディを持つ通常のHTTPレスポンス。
 /// JSONレスポンス、HTML、バイナリデータなどを返す際に使用。
-public protocol DataResponse: ServerResponse, HeaderModifiableResponse {
+public protocol DataResponse: ServerResponse {
     /// レスポンスボディ
     var body: Data { get }
 }
@@ -60,7 +60,7 @@ public struct BasicDataResponse: DataResponse {
     }
 
     /// ヘッダーを追加したレスポンスを返す
-    public func withAddedHeaders(_ additionalHeaders: [String: String]) -> BasicDataResponse {
+    public func addingHeaders(_ additionalHeaders: [String: String]) -> BasicDataResponse {
         var newHeaders = headers
         for (key, value) in additionalHeaders {
             newHeaders[key] = value

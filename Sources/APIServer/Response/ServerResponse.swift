@@ -15,14 +15,13 @@ public protocol ServerResponse: Sendable {
 
     /// HTTPヘッダー
     var headers: [String: String] { get }
-}
 
-// MARK: - Response Header Addition
-
-/// ヘッダー追加をサポートするレスポンス
-///
-/// DataResponse と一部の StreamResponse 実装がこれに準拠。
-public protocol HeaderModifiableResponse: ServerResponse {
-    /// ヘッダーを追加したレスポンスを返す
-    func withAddedHeaders(_ headers: [String: String]) -> Self
+    /// ヘッダーを追加したレスポンスを返す。同名ヘッダーは引数側で置き換える。
+    ///
+    /// ミドルウェア（CORS・セキュリティヘッダー等）が使う。**全てのレスポンス型が
+    /// 実装しなければならない。** 以前は `HeaderModifiableResponse` という別プロトコルで
+    /// 任意適合にし、未適合の型には黙って元のレスポンスを返していたが、それだと
+    /// ストリームレスポンスに対して CORS ヘッダーが無言で落ちた。実装漏れが
+    /// コンパイルエラーになるよう基底プロトコルの要件にしている。
+    func addingHeaders(_ headers: [String: String]) -> Self
 }

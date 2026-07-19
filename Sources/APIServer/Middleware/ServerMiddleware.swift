@@ -47,17 +47,3 @@ public protocol ServerRequest: Sendable {
 }
 
 // MARK: - Response Header Utilities
-
-extension ServerResponse {
-    /// ヘッダーを追加したレスポンスを返す
-    ///
-    /// HeaderModifiableResponseに準拠している場合はその機能を使用。
-    /// それ以外の場合は元のレスポンスをそのまま返す（ストリームの場合など）。
-    public func addingHeaders(_ headers: [String: String]) -> any ServerResponse {
-        if let modifiable = self as? any HeaderModifiableResponse {
-            return modifiable.withAddedHeaders(headers) as any ServerResponse
-        }
-        // ストリームレスポンス等でヘッダー追加ができない場合は元を返す
-        return self
-    }
-}

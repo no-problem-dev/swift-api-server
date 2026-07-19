@@ -33,7 +33,7 @@ public protocol StreamResponse: ServerResponse {
 /// }
 /// return SSEStreamResponse(events: stream, eventTypeMapper: { $0.eventName })
 /// ```
-public struct SSEStreamResponse<Event: Encodable & Sendable>: StreamResponse, HeaderModifiableResponse {
+public struct SSEStreamResponse<Event: Encodable & Sendable>: StreamResponse {
     public let status: HTTPStatus
     public let headers: [String: String]
     public let eventStream: AsyncStream<Event>
@@ -83,7 +83,7 @@ public struct SSEStreamResponse<Event: Encodable & Sendable>: StreamResponse, He
     }
 
     /// ヘッダーを追加したレスポンスを返す
-    public func withAddedHeaders(_ additionalHeaders: [String: String]) -> SSEStreamResponse<Event> {
+    public func addingHeaders(_ additionalHeaders: [String: String]) -> SSEStreamResponse<Event> {
         var newHeaders = headers
         for (key, value) in additionalHeaders {
             newHeaders[key] = value
@@ -122,5 +122,19 @@ public struct AnyStreamResponse: ServerResponse, @unchecked Sendable {
         self.status = response.status
         self.headers = response.headers
         self.underlyingResponse = underlying
+    }
+
+    private init(status: HTTPStatus, headers: [String: String], underlying: Any) {
+        self.status = status
+        self.headers = headers
+        self.underlyingResponse = underlying
+    }
+
+    public func addingHeaders(_ additionalHeaders: [String: String]) -> AnyStreamResponse {
+        AnyStreamResponse(
+            status: status,
+            headers: headers.merging(additionalHeaders) { _, new in new },
+            underlying: underlyingResponse
+        )
     }
 }

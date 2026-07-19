@@ -6,7 +6,7 @@ import APIContract
 ///
 /// ミドルウェアがVaporのResponseを直接操作できるようにしつつ、
 /// 抽象インターフェースを提供する。ストリーミングレスポンスにも対応。
-struct VaporResponse: ServerResponse, HeaderModifiableResponse {
+struct VaporResponse: ServerResponse {
     let response: Response
 
     var status: HTTPStatus {
@@ -25,7 +25,7 @@ struct VaporResponse: ServerResponse, HeaderModifiableResponse {
     ///
     /// VaporのResponseはクラスなので、直接ヘッダーを変更できます。
     /// ストリーミングボディを保持したまま、ヘッダーを追加します。
-    func withAddedHeaders(_ additionalHeaders: [String: String]) -> VaporResponse {
+    func addingHeaders(_ additionalHeaders: [String: String]) -> VaporResponse {
         for (key, value) in additionalHeaders {
             response.headers.replaceOrAdd(name: HTTPHeaders.Name(key), value: value)
         }

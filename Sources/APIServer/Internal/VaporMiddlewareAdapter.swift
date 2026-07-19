@@ -15,15 +15,28 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
             return VaporResponse(response: response)
         }
 
+        return Self.toVaporResponse(serverResponse)
+    }
+
+    /// 抽象 `ServerResponse` を、実際に送出される Vapor の `Response` に落とす。
+    ///
+    /// ミドルウェアが `addingHeaders` で足したヘッダーがここを通り抜けられないと、
+    /// CORS 等が無言で消える。`respond` に埋め込まず切り出してあるのはテストのため。
+    static func toVaporResponse(_ serverResponse: any ServerResponse) -> Response {
         // VaporResponseの場合、元のVapor Responseを返す
         // これによりストリーミングボディが保持される
         if let vaporResponse = serverResponse as? VaporResponse {
             return vaporResponse.response
         }
 
-        // AnyStreamResponseの場合、内部のVapor Responseを返す
+        // AnyStreamResponseの場合、内部のVapor Responseを返す。
+        // ミドルウェアが addingHeaders で足したヘッダーは snapshot 側にしか無いので、
+        // 実際に送出される underlying へ反映してから返す。
         if let anyStream = serverResponse as? AnyStreamResponse,
            let vaporResponse = anyStream.underlyingResponse as? Response {
+            for (name, value) in anyStream.headers {
+                vaporResponse.headers.replaceOrAdd(name: name, value: value)
+            }
             return vaporResponse
         }
 
