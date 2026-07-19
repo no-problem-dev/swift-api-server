@@ -14,7 +14,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/no-problem-dev/swift-api-contract.git", from: "1.1.1"),
+        .package(url: "https://github.com/no-problem-dev/swift-api-contract.git", from: "2.1.2"),
         .package(url: "https://github.com/vapor/vapor.git", from: "4.99.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.4.0"),
     ],
