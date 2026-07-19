@@ -151,9 +151,9 @@ extension VaporServerApplication {
     }
 }
 
-// MARK: - Webhook Route Extensions for VaporRoutes
+// MARK: - Webhook Route Extensions for APIServerRoutes
 
-extension VaporRoutes {
+extension APIServerRoutes {
     /// Webhook POSTルートを登録
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(
@@ -202,9 +202,9 @@ extension VaporRoutes {
     }
 }
 
-// MARK: - Webhook Route Extensions for VaporRouteGroup
+// MARK: - Webhook Route Extensions for APIServerRouteGroup
 
-extension VaporRouteGroup {
+extension APIServerRouteGroup {
     /// Webhook POSTルートを登録
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(

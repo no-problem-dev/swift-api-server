@@ -3,7 +3,7 @@ internal import Vapor
 import APIContract
 
 /// Vapor ベースの Routes 実装
-public struct VaporRoutes: Routes, @unchecked Sendable {
+public struct APIServerRoutes: Routes, @unchecked Sendable {
     let routes: RoutesBuilder
 
     init(app: Application) {
@@ -116,10 +116,10 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
     /// 共通パスプレフィックスを持つルートグループを作成する。
     ///
     /// - Parameter path: グループのパスプレフィックス（可変長）
-    /// - Returns: `VaporRouteGroup`
-    public func group(_ path: String...) -> VaporRouteGroup {
+    /// - Returns: `APIServerRouteGroup`
+    public func group(_ path: String...) -> APIServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
-        return VaporRouteGroup(routes: routes.grouped(components))
+        return APIServerRouteGroup(routes: routes.grouped(components))
     }
 
     // MARK: - APIContract Mounting
@@ -136,7 +136,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
 }
 
 /// Vapor ベースの RouteGroup 実装
-public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
+public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
     let routes: RoutesBuilder
 
     // MARK: - Simple Routes
@@ -241,10 +241,10 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
     /// サブグループを作成する。
     ///
     /// - Parameter path: サブグループのパスプレフィックス（可変長）
-    /// - Returns: `VaporRouteGroup`
-    public func group(_ path: String...) -> VaporRouteGroup {
+    /// - Returns: `APIServerRouteGroup`
+    public func group(_ path: String...) -> APIServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
-        return VaporRouteGroup(routes: routes.grouped(components))
+        return APIServerRouteGroup(routes: routes.grouped(components))
     }
 
     // MARK: - APIContract Mounting

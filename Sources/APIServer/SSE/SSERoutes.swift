@@ -134,9 +134,9 @@ extension VaporServerApplication {
     }
 }
 
-// MARK: - SSE Route Extensions for VaporRouteGroup
+// MARK: - SSE Route Extensions for APIServerRouteGroup
 
-extension VaporRouteGroup {
+extension APIServerRouteGroup {
     /// SSEストリームルートを登録（コンテキスト不要）
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(

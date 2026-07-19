@@ -14,7 +14,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     public var logger: ServerLogger { VaporLogger(logger: app.logger) }
 
     /// ルート登録インターフェース
-    public var routes: VaporRoutes { VaporRoutes(app: app) }
+    public var routes: APIServerRoutes { APIServerRoutes(app: app) }
 
     /// 初期化
     public init(environment: ServerEnvironment = .detect()) async throws {
