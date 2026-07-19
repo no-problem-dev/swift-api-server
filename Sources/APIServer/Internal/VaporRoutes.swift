@@ -30,10 +30,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.GET, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -52,10 +49,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.POST, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -74,10 +68,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.PUT, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -96,10 +87,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.DELETE, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -118,10 +106,7 @@ public struct VaporRoutes: Routes, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.PATCH, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -170,10 +155,7 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.GET, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -192,10 +174,7 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.POST, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -214,10 +193,7 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.PUT, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -236,10 +212,7 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.DELETE, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -258,10 +231,7 @@ public struct VaporRouteGroup: RouteGroup, @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.PATCH, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }

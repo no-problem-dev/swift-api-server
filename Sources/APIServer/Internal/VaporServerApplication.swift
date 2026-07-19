@@ -94,7 +94,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.GET, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            return try Self.encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -108,7 +108,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         let components = path.map { PathComponent(stringLiteral: $0) }
         app.on(.POST, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            return try Self.encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -125,7 +125,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         app.on(.GET, components) { request async throws -> Vapor.Response in
             let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
-            return try Self.encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -140,7 +140,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
         app.on(.POST, components) { request async throws -> Vapor.Response in
             let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
-            return try Self.encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -154,13 +154,6 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     }
 
     // MARK: - Private Helpers
-
-    private static func encodeResponse<T: Encodable>(_ value: T) throws -> Vapor.Response {
-        let data = try JSONEncoder.apiDefault.encode(value)
-        var headers = HTTPHeaders()
-        headers.contentType = .json
-        return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
-    }
 }
 
 // MARK: - Server Route Group
@@ -178,7 +171,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.GET, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            return try encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -192,7 +185,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         let components = path.map { PathComponent(stringLiteral: $0) }
         routes.on(.POST, components) { _ async throws -> Vapor.Response in
             let result = try await handler()
-            return try encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -207,7 +200,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         routes.on(.GET, components) { request async throws -> Vapor.Response in
             let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
-            return try encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -222,7 +215,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         routes.on(.POST, components) { request async throws -> Vapor.Response in
             let context = VaporSSEBuilder.buildContext(from: request)
             let result = try await handler(context)
-            return try encodeResponse(result)
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -231,13 +224,6 @@ public struct ServerRouteGroup: @unchecked Sendable {
     public func group(_ path: String...) -> ServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return ServerRouteGroup(routes: routes.grouped(components))
-    }
-
-    private func encodeResponse<T: Encodable>(_ value: T) throws -> Vapor.Response {
-        let data = try JSONEncoder.apiDefault.encode(value)
-        var headers = HTTPHeaders()
-        headers.contentType = .json
-        return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
     }
 }
 

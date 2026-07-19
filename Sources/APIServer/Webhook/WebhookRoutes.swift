@@ -123,10 +123,7 @@ extension VaporServerApplication {
         app.on(.POST, components) { request async throws -> Vapor.Response in
             let webhookRequest = try WebhookBuilder.buildRequest(body, from: request)
             let result = try await handler(webhookRequest)
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = Vapor.HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -184,10 +181,7 @@ extension VaporRoutes {
         routes.on(.POST, components) { request async throws -> Vapor.Response in
             let webhookRequest = try WebhookBuilder.buildRequest(body, from: request)
             let result = try await handler(webhookRequest)
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = Vapor.HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -238,10 +232,7 @@ extension VaporRouteGroup {
         routes.on(.POST, components) { request async throws -> Vapor.Response in
             let webhookRequest = try WebhookBuilder.buildRequest(body, from: request)
             let result = try await handler(webhookRequest)
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = Vapor.HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
@@ -292,10 +283,7 @@ extension ServerRouteGroup {
         routes.on(.POST, components) { request async throws -> Vapor.Response in
             let webhookRequest = try WebhookBuilder.buildRequest(body, from: request)
             let result = try await handler(webhookRequest)
-            let data = try JSONEncoder.apiDefault.encode(result)
-            var headers = Vapor.HTTPHeaders()
-            headers.contentType = .json
-            return Vapor.Response(status: .ok, headers: headers, body: .init(data: data))
+            return try encodeJSONResponse(result)
         }
         return self
     }
