@@ -106,19 +106,19 @@ public struct SSEStreamResponse<Event: Encodable & Sendable>: StreamResponse {
 ///
 /// - Note: `underlyingResponse`はVaporのResponseクラス（Sendable準拠）を保持するため、
 ///   @unchecked Sendableで安全に扱える。
-public struct AnyStreamResponse: ServerResponse, @unchecked Sendable {
-    public let status: HTTPStatus
-    public let headers: [String: String]
+struct AnyStreamResponse: ServerResponse, @unchecked Sendable {
+    let status: HTTPStatus
+    let headers: [String: String]
 
     /// 内部で保持する元のレスポンス（Vapor Response等）
-    internal let underlyingResponse: Any
+    let underlyingResponse: Any
 
     /// 型消去されたストリームレスポンスを作成する。
     ///
     /// - Parameters:
     ///   - response: ステータスとヘッダーを提供する元レスポンス
     ///   - underlying: 内部で保持するフレームワーク固有の実オブジェクト（例: Vapor の `Response`）
-    public init<R: ServerResponse>(wrapping response: R, underlying: Any) {
+    init<R: ServerResponse>(wrapping response: R, underlying: Any) {
         self.status = response.status
         self.headers = response.headers
         self.underlyingResponse = underlying
@@ -130,7 +130,7 @@ public struct AnyStreamResponse: ServerResponse, @unchecked Sendable {
         self.underlyingResponse = underlying
     }
 
-    public func addingHeaders(_ additionalHeaders: [String: String]) -> AnyStreamResponse {
+    func addingHeaders(_ additionalHeaders: [String: String]) -> AnyStreamResponse {
         AnyStreamResponse(
             status: status,
             headers: headers.merging(additionalHeaders) { _, new in new },

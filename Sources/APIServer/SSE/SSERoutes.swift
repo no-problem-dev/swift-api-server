@@ -76,7 +76,7 @@ extension VaporServerApplication {
     ///   - handler: SSEイベントのAsyncSequenceを返すハンドラー
     /// - Returns: Self（メソッドチェーン用）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -95,7 +95,7 @@ extension VaporServerApplication {
     ///   - handler: ServiceContextとSSEイベントのAsyncSequenceを返すハンドラー
     /// - Returns: Self（メソッドチェーン用）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable (ServiceContext) async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -118,7 +118,7 @@ extension VaporServerApplication {
     ///   - handler: ServiceContext、ボディ、SSEイベントのAsyncSequenceを返すハンドラー
     /// - Returns: Self（メソッドチェーン用）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,
         body: Body.Type,
         handler: @escaping @Sendable (ServiceContext, Body) async throws -> S
@@ -168,7 +168,7 @@ extension APIServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト不要）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -182,7 +182,7 @@ extension APIServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト付き）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable (ServiceContext) async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -197,7 +197,7 @@ extension APIServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト + ボディ付き）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,
         body: Body.Type,
         handler: @escaping @Sendable (ServiceContext, Body) async throws -> S
@@ -247,7 +247,7 @@ extension ServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト不要）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -261,7 +261,7 @@ extension ServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト付き）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable (ServiceContext) async throws -> S
     ) -> Self where S.Element == SSEEvent {
@@ -276,7 +276,7 @@ extension ServerRouteGroup {
 
     /// POSTでSSEストリームを開始するルートを登録（コンテキスト + ボディ付き）
     @discardableResult
-    public func postSSE<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
+    public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,
         body: Body.Type,
         handler: @escaping @Sendable (ServiceContext, Body) async throws -> S
