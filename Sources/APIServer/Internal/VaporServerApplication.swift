@@ -3,21 +3,21 @@ internal import Vapor
 import APIContract
 
 /// Vaporベースのサーバーアプリケーション実装
-public final class VaporServerApplication: ServerApplication, @unchecked Sendable {
+final class VaporServerApplication: ServerApplication, @unchecked Sendable {
     /// 内部Vaporアプリケーション
     let app: Application
 
     /// サーバー環境
-    public let environment: ServerEnvironment
+    let environment: ServerEnvironment
 
     /// ロガー
-    public var logger: ServerLogger { VaporLogger(logger: app.logger) }
+    var logger: ServerLogger { VaporLogger(logger: app.logger) }
 
     /// ルート登録インターフェース
-    public var routes: APIServerRoutes { APIServerRoutes(app: app) }
+    var routes: APIServerRoutes { APIServerRoutes(app: app) }
 
     /// 初期化
-    public init(environment: ServerEnvironment = .detect()) async throws {
+    init(environment: ServerEnvironment = .detect()) async throws {
         let vaporEnv: Vapor.Environment
         switch environment {
         case .development:
@@ -33,21 +33,21 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     }
 
     /// ミドルウェアを追加（抽象化された ServerMiddleware）
-    public func use(_ middleware: any ServerMiddleware) {
+    func use(_ middleware: any ServerMiddleware) {
         app.middleware.use(VaporMiddlewareAdapter(middleware: middleware, logger: app.logger))
     }
 
     /// 認証ミドルウェアを追加
     ///
     /// - Parameter provider: 認証プロバイダー
-    public func useAuth<P: AuthenticationProvider>(_ provider: P) {
+    func useAuth<P: AuthenticationProvider>(_ provider: P) {
         app.middleware.use(AuthMiddleware(provider: provider))
     }
 
     /// APIContractエラーミドルウェアを追加
     ///
     /// APIContractError を JSON エラーレスポンスに変換する。
-    public func useErrorMiddleware() {
+    func useErrorMiddleware() {
         app.middleware.use(APIContractErrorMiddleware())
     }
 
@@ -55,7 +55,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     ///
     /// デフォルトは 16 KB。大きなファイルアップロードを受け付ける場合は増やす。
     /// - Parameter bytes: 最大バイト数
-    public func setMaxBodySize(_ bytes: Int) {
+    func setMaxBodySize(_ bytes: Int) {
         app.routes.defaultMaxBodySize = ByteCount(value: bytes)
     }
 
@@ -63,17 +63,17 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     ///
     /// 例: "10mb", "500kb", "1gb"
     /// - Parameter size: サイズ文字列
-    public func setMaxBodySize(_ size: String) {
+    func setMaxBodySize(_ size: String) {
         app.routes.defaultMaxBodySize = ByteCount(stringLiteral: size)
     }
 
     /// サーバーを実行
-    public func run() async throws {
+    func run() async throws {
         try await app.execute()
     }
 
     /// サーバーをシャットダウン
-    public func shutdown() async throws {
+    func shutdown() async throws {
         try await app.asyncShutdown()
     }
 
@@ -87,7 +87,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// シンプルなGETルートを登録（コンテキスト不要）
     @discardableResult
-    public func get<Response: Encodable & Sendable>(
+    func get<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self {
@@ -101,7 +101,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// シンプルなPOSTルートを登録（コンテキスト不要）
     @discardableResult
-    public func post<Response: Encodable & Sendable>(
+    func post<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self {
@@ -117,7 +117,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// コンテキスト付きGETルートを登録
     @discardableResult
-    public func get<Response: Encodable & Sendable>(
+    func get<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
@@ -132,7 +132,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
 
     /// コンテキスト付きPOSTルートを登録
     @discardableResult
-    public func post<Response: Encodable & Sendable>(
+    func post<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable (ServiceContext) async throws -> Response
     ) -> Self {
@@ -148,7 +148,7 @@ public final class VaporServerApplication: ServerApplication, @unchecked Sendabl
     // MARK: - Route Grouping
 
     /// ルートグループを作成
-    public func group(_ path: String...) -> ServerRouteGroup {
+    func group(_ path: String...) -> ServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return ServerRouteGroup(routes: app.grouped(components))
     }
