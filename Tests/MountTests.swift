@@ -1,3 +1,4 @@
+import APIContract
 import XCTest
 import XCTVapor
 @testable import APIServer

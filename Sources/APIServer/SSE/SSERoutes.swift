@@ -1,3 +1,4 @@
+import APIContract
 import Foundation
 internal import Vapor
 
