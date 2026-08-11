@@ -11,10 +11,10 @@ public struct WebhookRequest<Body: Decodable & Sendable>: Sendable {
     /// The body, decoded from JSON with `snake_case` keys converted to camel case.
     public let body: Body
 
-    /// The headers the delivery arrived with.
-    public let headers: WebhookHeaders
+    /// The headers the delivery arrived with, found without regard to case.
+    public let headers: HTTPHeaderFields
 
-    init(body: Body, headers: WebhookHeaders) {
+    init(body: Body, headers: HTTPHeaderFields) {
         self.body = body
         self.headers = headers
     }
@@ -28,47 +28,12 @@ public struct RawWebhookRequest: Sendable {
     /// The body bytes, unparsed. `Content-Type` is not consulted.
     public let data: Data
 
-    /// The headers the delivery arrived with.
-    public let headers: WebhookHeaders
+    /// The headers the delivery arrived with, found without regard to case.
+    public let headers: HTTPHeaderFields
 
-    init(data: Data, headers: WebhookHeaders) {
+    init(data: Data, headers: HTTPHeaderFields) {
         self.data = data
         self.headers = headers
-    }
-}
-
-/// The headers of a webhook delivery, looked up without regard to case.
-///
-/// Names are lowercased on the way in, so `"CE-Type"` and `"ce-type"` find the same value. A
-/// header sent more than once keeps only its last value.
-public struct WebhookHeaders: Sendable {
-    private let storage: [String: String]
-
-    init(from vaporHeaders: HTTPHeaders) {
-        var dict: [String: String] = [:]
-        for (name, value) in vaporHeaders {
-            dict[name.lowercased()] = value
-        }
-        self.storage = dict
-    }
-
-    /// Returns a header's value, or `nil` if it was not sent.
-    ///
-    /// - Parameter name: The header name, in any case.
-    public subscript(_ name: String) -> String? {
-        storage[name.lowercased()]
-    }
-
-    /// Reports whether a header was sent, regardless of its value.
-    ///
-    /// - Parameter name: The header name, in any case.
-    public func contains(_ name: String) -> Bool {
-        storage[name.lowercased()] != nil
-    }
-
-    /// Every header, keyed by lowercased name.
-    public var all: [String: String] {
-        storage
     }
 }
 
@@ -331,7 +296,7 @@ enum WebhookBuilder {
         }
 
         let body = try decoder.decode(bodyType, from: buffer)
-        let headers = WebhookHeaders(from: request.headers)
+        let headers = HTTPHeaderFields(from: request.headers)
 
         return WebhookRequest(body: body, headers: headers)
     }
@@ -342,7 +307,7 @@ enum WebhookBuilder {
         }
 
         let data = Data(buffer: buffer)
-        let headers = WebhookHeaders(from: request.headers)
+        let headers = HTTPHeaderFields(from: request.headers)
 
         return RawWebhookRequest(data: data, headers: headers)
     }

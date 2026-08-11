@@ -20,24 +20,19 @@ struct APIContractErrorMiddleware: AsyncMiddleware {
         do {
             return try await next.respond(to: request)
         } catch let error as any APIContractError {
-            return try encodeErrorResponse(error, for: request)
+            return try encodeErrorResponse(error)
         } catch let error as AbortError {
-            return try encodeAbortError(error, for: request)
+            return try encodeAbortError(error)
         } catch let error as DecodingError {
-            let httpError = HTTPError.badRequest(decodingErrorMessage(error))
-            return try encodeErrorResponse(httpError, for: request)
+            return try encodeErrorResponse(HTTPError.badRequest(decodingErrorMessage(error)))
         } catch {
-            let httpError = HTTPError.internalError(error.localizedDescription)
-            return try encodeErrorResponse(httpError, for: request)
+            return try encodeErrorResponse(HTTPError.internalError(error.localizedDescription))
         }
     }
 
     // MARK: - Private Helpers
 
-    private func encodeErrorResponse(
-        _ error: some APIContractError,
-        for request: Request
-    ) throws -> Response {
+    private func encodeErrorResponse(_ error: some APIContractError) throws -> Response {
         let errorResponse = error.toErrorResponse()
         let encoder = JSONEncoder.apiDefault
         let data = try encoder.encode(errorResponse)
@@ -52,10 +47,7 @@ struct APIContractErrorMiddleware: AsyncMiddleware {
         )
     }
 
-    private func encodeAbortError(
-        _ error: AbortError,
-        for request: Request
-    ) throws -> Response {
+    private func encodeAbortError(_ error: AbortError) throws -> Response {
         let errorResponse = ErrorResponse(
             errorCode: "VAPOR_ABORT",
             message: error.reason

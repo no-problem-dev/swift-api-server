@@ -50,11 +50,10 @@ enum VaporSSEBuilder {
         // Step 2: hand the body to the response.
         let response = Response(status: .ok, body: body)
 
-        // Step 3: set the headers last.
-        response.headers.replaceOrAdd(name: .contentType, value: SSEConstants.contentType)
-        response.headers.replaceOrAdd(name: .cacheControl, value: SSEConstants.cacheControl)
-        response.headers.replaceOrAdd(name: .connection, value: SSEConstants.connection)
-        response.headers.replaceOrAdd(name: "X-Accel-Buffering", value: SSEConstants.noBuffering)
+        // Step 3: set the headers last, from the one place they are defined.
+        for (name, value) in SSEConstants.defaultHeaders {
+            response.headers.replaceOrAdd(name: name, value: value)
+        }
 
         return response
     }

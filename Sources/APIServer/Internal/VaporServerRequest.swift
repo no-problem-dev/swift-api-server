@@ -5,12 +5,6 @@ import APIContract
 struct VaporServerRequest: ServerRequest {
     let request: Request
 
-    var pathParameters: [String: String] {
-        // Always empty. Path parameters are bound during route dispatch, which happens after the
-        // middleware chain has run, so there is nothing to report at this point.
-        [:]
-    }
-
     var queryParameters: [String: String] {
         var params: [String: String] = [:]
         if let queryString = request.url.query {
@@ -26,12 +20,8 @@ struct VaporServerRequest: ServerRequest {
         return params
     }
 
-    var headers: [String: String] {
-        var result: [String: String] = [:]
-        for (name, value) in request.headers {
-            result[name] = value
-        }
-        return result
+    var headers: HTTPHeaderFields {
+        HTTPHeaderFields(from: request.headers)
     }
 
     var body: Data? {

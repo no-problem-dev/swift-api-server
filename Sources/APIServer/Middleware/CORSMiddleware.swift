@@ -1,4 +1,5 @@
 import APIContract
+import Foundation
 
 /// Answers CORS preflights and attaches the access-control headers to every other response.
 ///
@@ -20,25 +21,32 @@ public struct CORSServerMiddleware: ServerMiddleware {
 
     public func handle(
         request: any ServerRequest,
-        next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
+        next: @escaping @Sendable () async throws -> any ServerResponse
     ) async throws -> any ServerResponse {
         if request.method == "OPTIONS" {
             return BasicDataResponse(
                 status: .noContent,
-                headers: corsHeaders(for: request)
+                headers: corsHeaders(for: request, extending: nil)
             )
         }
 
-        let response = try await next(request)
+        let response = try await next()
 
-        return response.addingHeaders(corsHeaders(for: request))
+        return response.addingHeaders(
+            corsHeaders(for: request, extending: response.headers["Vary"])
+        )
     }
 
-    private func corsHeaders(for request: any ServerRequest) -> [String: String] {
-        var headers: [String: String] = [:]
+    /// - Parameter existingVary: The `Vary` the response already carries, so `Origin` is added to
+    ///   it rather than replacing it.
+    private func corsHeaders(
+        for request: any ServerRequest,
+        extending existingVary: String?
+    ) -> HTTPHeaderFields {
+        var headers = HTTPHeaderFields()
 
         // An allowed origin is echoed back rather than answered with `*`, which is what makes
-        // credentialed requests work. The header name is matched case-sensitively.
+        // credentialed requests work.
         if let origin = request.headers["Origin"] {
             if configuration.allowedOrigins.contains("*") ||
                configuration.allowedOrigins.contains(origin) {
@@ -47,6 +55,11 @@ public struct CORSServerMiddleware: ServerMiddleware {
         } else if configuration.allowedOrigins.contains("*") {
             headers["Access-Control-Allow-Origin"] = "*"
         }
+
+        // What this response allows depends on the origin that asked, so a shared cache must not
+        // serve it to a different one. Without this, a cache hands an origin the allow header that
+        // the allow-list refused it.
+        headers["Vary"] = Self.vary(byOriginExtending: existingVary)
 
         headers["Access-Control-Allow-Methods"] = configuration.allowedMethods
             .map { $0.rawValue }
@@ -69,6 +82,26 @@ public struct CORSServerMiddleware: ServerMiddleware {
         }
 
         return headers
+    }
+
+    /// Adds `Origin` to a `Vary` value, keeping what the handler already varies by.
+    ///
+    /// A list that already names `Origin`, or the `*` that stands for every field, is returned
+    /// untouched rather than gaining a duplicate.
+    private static func vary(byOriginExtending existing: String?) -> String {
+        guard let existing, !existing.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return "Origin"
+        }
+
+        let fields = existing
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+
+        let alreadyVaries = fields.contains {
+            $0 == "*" || $0.caseInsensitiveCompare("Origin") == .orderedSame
+        }
+
+        return alreadyVaries ? existing : "\(existing), Origin"
     }
 }
 

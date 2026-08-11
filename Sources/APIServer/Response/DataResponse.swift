@@ -14,7 +14,7 @@ public protocol DataResponse: ServerResponse {
 /// The stock buffered response, used for anything from JSON to HTML to raw bytes.
 public struct BasicDataResponse: DataResponse {
     public let status: HTTPStatus
-    public let headers: [String: String]
+    public let headers: HTTPHeaderFields
     public let body: Data
 
     /// Creates a response from raw bytes.
@@ -25,7 +25,7 @@ public struct BasicDataResponse: DataResponse {
     ///   - body: The body bytes; empty by default.
     public init(
         status: HTTPStatus = .ok,
-        headers: [String: String] = [:],
+        headers: HTTPHeaderFields = [:],
         body: Data = Data()
     ) {
         self.status = status
@@ -46,7 +46,7 @@ public struct BasicDataResponse: DataResponse {
     /// - Throws: Whatever `encoder` throws for a value it cannot encode.
     public init<T: Encodable>(
         status: HTTPStatus = .ok,
-        headers: [String: String] = [:],
+        headers: HTTPHeaderFields = [:],
         json value: T,
         encoder: JSONEncoder = .apiDefault
     ) throws {
@@ -58,12 +58,12 @@ public struct BasicDataResponse: DataResponse {
     }
 
     /// Returns a copy carrying the given headers, replacing any of the same name.
-    public func addingHeaders(_ additionalHeaders: [String: String]) -> BasicDataResponse {
-        var newHeaders = headers
-        for (key, value) in additionalHeaders {
-            newHeaders[key] = value
-        }
-        return BasicDataResponse(status: status, headers: newHeaders, body: body)
+    public func addingHeaders(_ additionalHeaders: HTTPHeaderFields) -> BasicDataResponse {
+        BasicDataResponse(
+            status: status,
+            headers: headers.replacing(additionalHeaders),
+            body: body
+        )
     }
 }
 

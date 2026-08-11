@@ -77,8 +77,7 @@ Three route families cover the shapes a service needs beyond plain JSON:
 - ``ServerResponse``
 - ``DataResponse``
 - ``BasicDataResponse``
-- ``StreamResponse``
-- ``SSEStreamResponse``
+- ``HTTPHeaderFields``
 - ``HTTPStatus``
 
 ### Server-Sent Events
@@ -91,4 +90,3 @@ Three route families cover the shapes a service needs beyond plain JSON:
 
 - ``WebhookRequest``
 - ``RawWebhookRequest``
-- ``WebhookHeaders``

@@ -58,15 +58,13 @@ documentation why that is sound.
 
 Two consequences are worth knowing before designing around this boundary.
 
-**Middleware cannot rewrite the request.** ``ServerMiddleware/handle(request:next:)`` takes a
-request and passes one to `next`, but the adapter forwards the original request regardless of what
-was handed to it. A middleware can read, short-circuit, or decorate the response; it cannot change
-what the handler receives.
+**Middleware cannot rewrite the request.** `next` takes no argument, so the original request is
+what continues down the chain. A middleware can read, short-circuit, or decorate the response; it
+cannot change what the handler receives.
 
-**Path parameters are not visible to middleware.** ``ServerRequest/pathParameters`` is always empty
-in the shipped implementation, because parameters are bound during route dispatch, which happens
-after the chain has run. A middleware that needs the path reads it from
-``ServerRequest/url``.
+**Path parameters are not visible to middleware.** They are bound during route dispatch, which
+happens after the chain has run, so ``ServerRequest`` does not offer them at all. A middleware that
+needs the path reads it from ``ServerRequest/url``.
 
 Neither limit affects route handlers, which receive decoded inputs and path parameters normally.
 

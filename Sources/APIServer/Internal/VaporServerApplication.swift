@@ -72,14 +72,14 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
     }
 
     /// Stops the server and releases its event loops.
+    ///
+    /// This is the only way a server is shut down. Doing it again from `deinit` as a safety net
+    /// does not work: the framework asserts on a second shutdown, and an assertion raised from a
+    /// detached task started in `deinit` is not something a caller can catch — so the safety net
+    /// took the process down on exactly the sequence the documentation recommends. A caller that
+    /// forgets to shut down is told so by the framework's own check.
     func shutdown() async throws {
         try await app.asyncShutdown()
-    }
-
-    deinit {
-        Task { [app] in
-            try? await app.asyncShutdown()
-        }
     }
 
     // MARK: - Simple Route Registration

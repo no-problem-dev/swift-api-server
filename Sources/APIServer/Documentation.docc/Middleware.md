@@ -10,11 +10,16 @@ response last.
 
 Two limits shape what belongs in a middleware:
 
-- **The request cannot be rewritten.** ``ServerMiddleware/handle(request:next:)`` hands you a
-  request and takes one back, but the original is what continues down the chain. Decorate the
-  response, or reject the request — do not try to alter the input.
-- **Path parameters are not available.** ``ServerRequest/pathParameters`` is always empty, because
-  parameters are bound after the chain has run. Match on ``ServerRequest/url`` instead.
+- **The request cannot be rewritten.** `next` takes nothing: the original request is what continues
+  down the chain. Decorate the response, or reject the request — altering the input is not
+  something the signature offers.
+- **Path parameters are not available.** They are bound during route dispatch, which happens after
+  the chain has run, so ``ServerRequest`` does not carry them. Match on ``ServerRequest/url``
+  instead. Handlers are unaffected — a contract endpoint's input is decoded from the matched route.
+
+Header lookup is case-insensitive throughout: ``HTTPHeaderFields`` folds field names, so
+`request.headers["Origin"]` finds the field whether the client wrote `Origin` or the lowercase
+`origin` that HTTP/2 and HTTP/3 require.
 
 ## Built-in middleware
 
@@ -44,6 +49,10 @@ Origin matching is exact — there is no wildcard within an entry, so `https://*
 nothing. An allowed origin is echoed back rather than answered with `*`, which is what makes
 credentialed requests work; the flip side is that `allowedOrigins: ["*"]` together with
 `allowCredentials: true` is accepted here and effectively trusts every origin.
+
+Because the answer depends on who asked, every response carries `Vary: Origin`, added to whatever
+the handler already varies by. Without it a shared cache stores one origin's allow header under the
+URL alone and hands it to the next origin that asks.
 
 ### Authentication
 
@@ -97,7 +106,7 @@ struct LoggingMiddleware: ServerMiddleware {
     ) async throws -> any ServerResponse {
         print("Request: \(request.method) \(request.url)")
 
-        let response = try await next(request)
+        let response = try await next()
 
         print("Response: \(response.status.code)")
 

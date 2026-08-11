@@ -9,8 +9,8 @@ public protocol ServerResponse: Sendable {
     /// The status to send.
     var status: HTTPStatus { get }
 
-    /// The headers to send.
-    var headers: [String: String] { get }
+    /// The headers to send, found without regard to case.
+    var headers: HTTPHeaderFields { get }
 
     /// Returns the response with the given headers applied, replacing any of the same name.
     ///
@@ -20,5 +20,5 @@ public protocol ServerResponse: Sendable {
     /// forgetting it is a compile error.
     ///
     /// - Parameter headers: Headers to add or replace.
-    func addingHeaders(_ headers: [String: String]) -> Self
+    func addingHeaders(_ headers: HTTPHeaderFields) -> Self
 }

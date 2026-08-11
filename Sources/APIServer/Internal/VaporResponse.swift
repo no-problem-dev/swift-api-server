@@ -13,12 +13,8 @@ struct VaporResponse: ServerResponse {
         HTTPStatus(code: Int(response.status.code), reasonPhrase: response.status.reasonPhrase)
     }
 
-    var headers: [String: String] {
-        var result: [String: String] = [:]
-        for (name, value) in response.headers {
-            result[name] = value
-        }
-        return result
+    var headers: HTTPHeaderFields {
+        HTTPHeaderFields(from: response.headers)
     }
 
     /// Applies the headers to the wrapped response and returns `self`.
@@ -26,8 +22,8 @@ struct VaporResponse: ServerResponse {
     /// The wrapped response is a reference type, so this mutates in place rather than copying —
     /// which is what keeps a streaming body intact. The value discarded by a caller that ignores
     /// the result has been modified all the same.
-    func addingHeaders(_ additionalHeaders: [String: String]) -> VaporResponse {
-        for (key, value) in additionalHeaders {
+    func addingHeaders(_ additionalHeaders: HTTPHeaderFields) -> VaporResponse {
+        for (key, value) in additionalHeaders.all {
             response.headers.replaceOrAdd(name: HTTPHeaders.Name(key), value: value)
         }
         return self

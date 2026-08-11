@@ -85,8 +85,8 @@ server.sse("user", "events") { context in
 ## Custom authentication
 
 Implement ``ServerMiddleware`` when the built-in flow does not fit — for instance to skip
-verification on a set of paths. Match on the URL: ``ServerRequest/pathParameters`` is always empty
-in a middleware.
+verification on a set of paths. Match on the URL: path parameters are bound after the chain has
+run, so a middleware never sees them.
 
 ```swift
 struct ConditionalAuthMiddleware: ServerMiddleware {
@@ -95,20 +95,20 @@ struct ConditionalAuthMiddleware: ServerMiddleware {
 
     func handle(
         request: any ServerRequest,
-        next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
+        next: @escaping @Sendable () async throws -> any ServerResponse
     ) async throws -> any ServerResponse {
         if excludedPaths.contains(request.url.path) {
-            return try await next(request)
+            return try await next()
         }
 
         guard let authHeader = request.headers["Authorization"],
               authHeader.lowercased().hasPrefix("bearer ") else {
-            return try await next(request)
+            return try await next()
         }
 
         let token = String(authHeader.dropFirst("bearer ".count))
         // Verify the token, and reject by throwing.
-        return try await next(request)
+        return try await next()
     }
 }
 
@@ -118,6 +118,6 @@ server.use(ConditionalAuthMiddleware(
 ))
 ```
 
-A middleware cannot record an identity for later steps to read — the request it passes to `next` is
-discarded, and there is no mutable slot on ``ServerRequest``. A custom authenticator can therefore
-only reject; establishing identity for handlers goes through `useAuth(_:)`.
+A middleware cannot record an identity for later steps to read — `next` takes no request, and there
+is no mutable slot on ``ServerRequest``. A custom authenticator can therefore only reject;
+establishing identity for handlers goes through `useAuth(_:)`.

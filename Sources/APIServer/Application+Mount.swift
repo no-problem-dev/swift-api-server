@@ -67,18 +67,11 @@ extension RoutesBuilder {
 extension String {
     /// Splits a contract sub-path into route components.
     ///
-    /// `:name` segments become parameter components, which the string-literal conversion already
-    /// handles, so both branches below are deliberately identical.
+    /// A `:name` segment needs no special case: the string-literal conversion already turns it
+    /// into a parameter component.
     var toPathComponents: [PathComponent] {
         guard !isEmpty else { return [] }
 
-        return self.split(separator: "/").map { segment in
-            let str = String(segment)
-            if str.hasPrefix(":") {
-                return PathComponent(stringLiteral: str)
-            } else {
-                return PathComponent(stringLiteral: str)
-            }
-        }
+        return self.split(separator: "/").map { PathComponent(stringLiteral: String($0)) }
     }
 }
