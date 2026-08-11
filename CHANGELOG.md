@@ -1,66 +1,94 @@
 # Changelog
 
-このプロジェクトのすべての注目すべき変更はこのファイルに記録されます。
+All notable changes to this project are recorded in this file.
 
-フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
-このプロジェクトは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [未リリース]
+## [Unreleased]
 
-なし
+None
+
+## [2.0.2] - 2026-07-19
+
+### Changed
+
+- Split the five types that shared the 400-line `VaporServerApplication.swift` into one file each.
+
+## [2.0.1] - 2026-07-19
+
+### Changed
+
+- JSON response construction is now done in one place.
+- Renamed `Request+Decode` to match what it actually does.
+
+## [2.0.0] - 2026-07-19
+
+### Changed
+
+- Raised the `swift-api-contract` pin to 2.1.2, so a shared contract resolves in the same
+  dependency graph as the client side. This package's own public API is unchanged; the major
+  is the pinned dependency's major crossing over.
+- Merged the duplicated `buildContext` implementations and corrected import placement.
+
+## [1.0.9] - 2026-04-07
+
+### Fixed
+
+- Handle the new `AuthScheme` cases (`.bearer` / `.apiKey` / `.queryParam`).
 
 ## [1.0.8] - 2026-01-18
 
-### 追加
+### Added
 
-- **最大リクエストボディサイズ設定**: 大きなファイルアップロード（Base64画像など）に対応
-  - `setMaxBodySize(_ bytes: Int)`: バイト数で指定
-  - `setMaxBodySize(_ size: String)`: 文字列で指定（例: "10mb", "500kb", "1gb"）
+- **Maximum request body size setting**: for large file uploads (Base64 images and the like)
+  - `setMaxBodySize(_ bytes: Int)`: specify in bytes
+  - `setMaxBodySize(_ size: String)`: specify as a string (e.g. "10mb", "500kb", "1gb")
 
-### 使用例
+### Example
 
 ```swift
 let server = try await Server.create()
-server.setMaxBodySize("10mb")  // 10MB まで受け付け
+server.setMaxBodySize("10mb")  // accept up to 10MB
 // or
 server.setMaxBodySize(10 * 1024 * 1024)  // 10MB
 ```
 
 ## [1.0.7] - 2026-01-17
 
-### 追加
+### Added
 
-- **Raw Webhook サポート**: Protobuf 等の非JSON形式のリクエストボディ対応
-  - `RawWebhookRequest`: 生バイナリデータとヘッダーを保持する型
-  - `Routes` プロトコルに `webhookRaw()` メソッドを追加
-  - `VaporServerApplication`, `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup` への実装
-  - `WebhookBuilder.buildRawRequest` ヘルパーメソッド
+- **Raw webhook support**: for non-JSON request bodies such as Protobuf
+  - `RawWebhookRequest`: a type holding the raw binary data and the headers
+  - Added a `webhookRaw()` method to the `Routes` protocol
+  - Implementations in `VaporServerApplication`, `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup`
+  - `WebhookBuilder.buildRawRequest` helper method
 
-### 使用例
+### Example
 
 ```swift
-// Eventarc Firestore トリガー（Protobuf形式）
+// Eventarc Firestore trigger (Protobuf)
 routes.webhookRaw("firestore-event") { request in
     let event = try FirestoreProtobufDecoder.decode(request.data)
     let headers = CloudEventHeaders(from: request.headers.all)
     print("Event type: \(headers.type ?? "unknown")")
-    // イベント処理...
+    // handle the event...
     return HTTPStatus.ok
 }
 ```
 
 ## [1.0.6] - 2026-01-17
 
-### 追加
+### Added
 
-- **Webhook ルートサポート**: Eventarc/CloudEvents 統合用の Webhook エンドポイント機能
-  - `WebhookRequest<Body>`: リクエストボディとヘッダーを保持する型
-  - `WebhookHeaders`: HTTP ヘッダーアクセス用の型（大文字小文字を無視）
-  - `Routes` プロトコルに `webhook()` メソッドを追加
-  - ステータスのみ返すハンドラーとレスポンスボディ付きハンドラーの両方をサポート
-  - `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup` への実装
+- **Webhook route support**: webhook endpoints for Eventarc/CloudEvents integration
+  - `WebhookRequest<Body>`: a type holding the request body and the headers
+  - `WebhookHeaders`: a type for accessing HTTP headers (case-insensitive)
+  - Added a `webhook()` method to the `Routes` protocol
+  - Supports both status-only handlers and handlers with a response body
+  - Implementations in `VaporRoutes`, `VaporRouteGroup`, `ServerRouteGroup`
 
-### 使用例
+### Example
 
 ```swift
 routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
@@ -72,105 +100,109 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 
 ## [1.0.5] - 2026-01-11
 
-### 追加
+### Added
 
-- **SSEストリーミングサーバー**: Server-Sent Events (SSE) サーバー実装
-  - `SSEEvent`: サーバー側SSEイベント（エンコード対応）
-  - `SSERoutes`: `StreamingRouteRegistrar` 実装
-  - `VaporSSEBuilder`: VaporのSSEレスポンスビルダー
-  - `ServerResponse`/`DataResponse`/`StreamResponse`: レスポンス型抽象化
+- **SSE streaming server**: a Server-Sent Events (SSE) server implementation
+  - `SSEEvent`: a server-side SSE event (encodable)
+  - `SSERoutes`: a `StreamingRouteRegistrar` implementation
+  - `VaporSSEBuilder`: Vapor's SSE response builder
+  - `ServerResponse`/`DataResponse`/`StreamResponse`: response type abstractions
 
-### 変更
+### Changed
 
-- **ミドルウェア更新**: ストリーミングレスポンス対応
-  - `ErrorMiddleware`: ストリーミングエラーハンドリング
-  - `CORSMiddleware`: ストリーミング対応
-  - `ServerMiddleware`: ストリーミング対応
-  - `VaporServerApplication`: SSEルート登録統合
+- **Middleware updates**: support for streaming responses
+  - `ErrorMiddleware`: streaming error handling
+  - `CORSMiddleware`: streaming support
+  - `ServerMiddleware`: streaming support
+  - `VaporServerApplication`: SSE route registration integrated
 
-### テスト
+### Tests
 
-- SSEイベントエンコーディングのテストを追加
-- ルート登録のテストを追加
+- Added tests for SSE event encoding
+- Added tests for route registration
 
 ## [1.0.4] - 2026-01-10
 
-### 修正
+### Fixed
 
-- **パスパラメータ解析の修正**: `pathTemplate` からパスパラメータを解析するように変更
-  - ネストしたパスパラメータ（例: `/books/:bookId/chats` の `:bookId`）が正しく抽出されるように
-  - `Request+Decode.swift` で `subPath` ではなく `pathTemplate` を使用
-  - ネストしたエンドポイントのテストを追加
+- **Path parameter parsing**: parse path parameters from `pathTemplate`
+  - Nested path parameters (e.g. `:bookId` in `/books/:bookId/chats`) are now extracted correctly
+  - `Request+Decode.swift` uses `pathTemplate` instead of `subPath`
+  - Added tests for nested endpoints
 
 ## [1.0.3] - 2026-01-01
 
-### 変更
+### Changed
 
-- **Handler → Service リネーム** (APIContract v1.0.3対応)
-  - `RouteRegistrar` → `Routes` プロトコル
+- **Handler → Service rename** (to follow APIContract v1.0.3)
+  - `RouteRegistrar` → `Routes` protocol
   - `MountedGroup` → `APIRoutes`
   - `VaporRouteRegistrar` → `VaporRoutes`
-  - Handler参照をService パターンに更新
+  - Handler references updated to the Service pattern
 
 ## [1.0.1] - 2026-01-01
 
-### 変更
+### Changed
 
-- **Vapor隠蔽**: `internal import Vapor` (SE-0409) により利用側で `import Vapor` が不要に
-  - `VaporServerApplication.app` を `internal` に変更
-  - `APIContractErrorMiddleware` を `internal` に変更（`server.useErrorMiddleware()` を使用）
-  - `AuthMiddleware` を `internal` に変更（`server.useAuth()` を使用）
-  - `AuthenticatedUser` を `internal` に変更
-  - `Application` / `RoutesBuilder` の public extension を削除
+- **Vapor is hidden**: `internal import Vapor` (SE-0409) removes the need for `import Vapor` on the calling side
+  - `VaporServerApplication.app` is now `internal`
+  - `APIContractErrorMiddleware` is now `internal` (use `server.useErrorMiddleware()`)
+  - `AuthMiddleware` is now `internal` (use `server.useAuth()`)
+  - `AuthenticatedUser` is now `internal`
+  - Removed the public extensions on `Application` / `RoutesBuilder`
 
 ## [1.0.0] - 2025-01-01
 
-### 追加
+### Added
 
-- **ServerApplication プロトコル**: Vapor に依存しないサーバーアプリケーション抽象化
-  - `routes`: ルート登録機能
-  - `logger`: ログ機能
-  - `middleware`: ミドルウェアチェーン
-  - `run/shutdown`: サーバーライフサイクル管理
+- **ServerApplication protocol**: a server application abstraction that does not depend on Vapor
+  - `routes`: route registration
+  - `logger`: logging
+  - `middleware`: the middleware chain
+  - `run/shutdown`: server lifecycle management
 
-- **ServerEnvironment**: 環境設定の抽象化
+- **ServerEnvironment**: an abstraction over environment configuration
   - `.development`, `.testing`, `.production`
-  - `.detect()` による環境変数からの自動検出
+  - Automatic detection from environment variables with `.detect()`
 
-- **ルーティングシステム**: RESTful API のルート定義
-  - `RouteRegistrar` プロトコル
-  - `RouteGroup` によるネストされたルーティング
-  - HTTP メソッド対応: GET, POST, PUT, DELETE, PATCH
+- **Routing system**: route definitions for RESTful APIs
+  - `RouteRegistrar` protocol
+  - Nested routing with `RouteGroup`
+  - HTTP methods: GET, POST, PUT, DELETE, PATCH
 
-- **ミドルウェアシステム**: リクエスト/レスポンスパイプライン
-  - `ServerMiddleware` プロトコル
-  - `CORSMiddleware`: CORS 設定（オリジン、メソッド、ヘッダー、クレデンシャル）
-  - `AuthMiddleware`: Bearer トークン認証
-  - `APIContractErrorMiddleware`: エラーを JSON レスポンスに変換
+- **Middleware system**: the request/response pipeline
+  - `ServerMiddleware` protocol
+  - `CORSMiddleware`: CORS configuration (origins, methods, headers, credentials)
+  - `AuthMiddleware`: Bearer token authentication
+  - `APIContractErrorMiddleware`: converts errors into JSON responses
 
-- **APIContract 統合**: コントラクトベースの API 定義
-  - `Application.mount(_:)` による APIContract マウント
-  - 自動リクエストデコード（パス、クエリ、ボディ）
-  - `HandlerContext` による認証状態管理
+- **APIContract integration**: contract-based API definitions
+  - Mounting an APIContract with `Application.mount(_:)`
+  - Automatic request decoding (path, query, body)
+  - Authentication state management through `HandlerContext`
 
-- **HTTPStatus**: 一般的な HTTP ステータスコード（17種類）
+- **HTTPStatus**: the common HTTP status codes (17 of them)
 
-### ドキュメント
+### Documentation
 
-- README.md（日本語・英語）
-- DESIGN.md（設計ドキュメント）
-- DocC ドキュメント
-- CHANGELOG.md（Keep a Changelog 形式）
+- README.md (Japanese and English)
+- DESIGN.md (design document)
+- DocC documentation
+- CHANGELOG.md (Keep a Changelog format)
 - RELEASE_PROCESS.md
 
-### テスト
+### Tests
 
-- MountTests: ルートマウントと HTTP メソッドテスト
-- AuthMiddlewareTests: 認証ミドルウェアテスト
-- ErrorMiddlewareTests: エラーハンドリングテスト
-- DecodeTests: リクエストパラメータデコードテスト
+- MountTests: route mounting and HTTP method tests
+- AuthMiddlewareTests: authentication middleware tests
+- ErrorMiddlewareTests: error handling tests
+- DecodeTests: request parameter decoding tests
 
-[未リリース]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.2...HEAD
+[2.0.2]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.1...2.0.2
+[2.0.1]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.0...2.0.1
+[2.0.0]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.9...2.0.0
+[1.0.9]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.5...v1.0.6
