@@ -1,4 +1,8 @@
-/// サーバーログ出力プロトコル
+/// The log sink the server writes through, with one method per severity level.
+///
+/// Messages are autoclosures, so interpolation is skipped entirely when the backing log level
+/// filters the message out. The source-location parameters have defaults supplied by a protocol
+/// extension; conformers must still declare them.
 public protocol ServerLogger: Sendable {
     func trace(_ message: @autoclosure () -> String, file: String, function: String, line: UInt)
     func debug(_ message: @autoclosure () -> String, file: String, function: String, line: UInt)

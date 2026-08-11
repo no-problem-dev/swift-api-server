@@ -1,43 +1,44 @@
 import APIContract
 
-/// ルート登録プロトコル
+/// Where routes are declared, whether at the root of a server or inside a group.
 ///
-/// HTTP ルートの登録機能を提供する抽象インターフェース。
+/// Every registration returns `Self`, so calls chain. Registering two handlers for the same method
+/// and path is not rejected here — the first match wins at dispatch time.
 public protocol Routes: Sendable {
-    /// サブグループの型
+    /// The type produced by `group(_:)`, itself a `Routes`.
     associatedtype Group: RouteGroup
 
     // MARK: - Simple Routes
 
-    /// GET ルートを登録
+    /// Registers a GET route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func get<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// POST ルートを登録
+    /// Registers a POST route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func post<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// PUT ルートを登録
+    /// Registers a PUT route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func put<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// DELETE ルートを登録
+    /// Registers a DELETE route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func delete<Response: Encodable & Sendable>(
         _ path: String...,
         handler: @escaping @Sendable () async throws -> Response
     ) -> Self
 
-    /// PATCH ルートを登録
+    /// Registers a PATCH route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -46,10 +47,11 @@ public protocol Routes: Sendable {
 
     // MARK: - Webhook Routes
 
-    /// Webhook POSTルートを登録
+    /// Registers a POST route that hands the handler the decoded body together with the request
+    /// headers, and answers with the status the handler returns and an empty body.
     ///
-    /// リクエストボディとヘッダーの両方にアクセスできるエンドポイントを登録します。
-    /// Eventarc や他のWebhookサービスからのイベント受信に使用します。
+    /// Bodies are decoded from `snake_case` keys, matching the convention of the event carriers
+    /// this is meant for. An empty body is rejected with `400` before the handler runs.
     @discardableResult
     func webhook<Body: Decodable & Sendable>(
         _ path: String...,
@@ -57,7 +59,8 @@ public protocol Routes: Sendable {
         handler: @escaping @Sendable (WebhookRequest<Body>) async throws -> HTTPStatus
     ) -> Self
 
-    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    /// Registers a webhook route that answers `200 OK` with the handler's JSON-encoded value
+    /// instead of a bare status.
     @discardableResult
     func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
         _ path: String...,
@@ -65,10 +68,10 @@ public protocol Routes: Sendable {
         handler: @escaping @Sendable (WebhookRequest<Body>) async throws -> Response
     ) -> Self
 
-    /// Webhook POSTルートを登録（生バイナリデータ）
+    /// Registers a webhook route that hands the handler the body bytes as sent.
     ///
-    /// Protobuf などの非JSON形式のリクエストボディを受け取るエンドポイントを登録します。
-    /// Content-Type に関係なく、生のバイナリデータをそのまま渡します。
+    /// Nothing is parsed and `Content-Type` is ignored, which is what makes Protobuf and
+    /// signature-verified payloads possible — verify a signature over these exact bytes.
     @discardableResult
     func webhookRaw(
         _ path: String...,
@@ -77,20 +80,18 @@ public protocol Routes: Sendable {
 
     // MARK: - Grouping
 
-    /// ルートグループを作成
+    /// Creates a group that prefixes every route registered on it with the given path.
     func group(_ path: String...) -> Group
 
     // MARK: - APIContract Mounting
 
-    /// API グループをマウント（Service.Group から型推論）
+    /// Mounts a service under its contract group's base path, ready for endpoint registration.
+    ///
+    /// Mounting alone serves nothing; the endpoints still have to be registered on the result.
     func mount<S: APIService>(
         _ service: S
     ) -> APIRoutes<S.Group, S>
 }
 
-/// ルートグループプロトコル
-///
-/// `Routes` を継承し、共通パスプレフィックス配下でルートをまとめる。
-/// `Routes.group()` の戻り値として使い、`Routes` 単体では表現しにくい
-/// サブパス単位の分離・再利用を実現する。
+/// A `Routes` scoped under a path prefix, which can be nested further.
 public protocol RouteGroup: Routes {}

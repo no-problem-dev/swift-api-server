@@ -1,27 +1,24 @@
 import Foundation
 
-/// サーバーレスポンスの基底プロトコル
+/// What every response has in common: a status, headers, and the ability to gain more headers.
 ///
-/// 全てのレスポンス型が共有する最小限のインターフェース。
-/// 具象的なレスポンス種別は`DataResponse`または`StreamResponse`を使用。
-///
-/// ## 設計思想
-/// - Boolean フラグ (`isStreaming`) ではなく型で区別
-/// - 各レスポンス種別が適切なプロパティを持つ
-/// - ミドルウェアは existential として扱い、必要に応じてダウンキャスト
+/// Buffered and streaming bodies are separate protocols refining this one rather than a flag on a
+/// single type, so a response that has no `body` cannot be asked for one. Middleware handles
+/// responses as `any ServerResponse` and downcasts only when it needs the body.
 public protocol ServerResponse: Sendable {
-    /// HTTPステータス
+    /// The status to send.
     var status: HTTPStatus { get }
 
-    /// HTTPヘッダー
+    /// The headers to send.
     var headers: [String: String] { get }
 
-    /// ヘッダーを追加したレスポンスを返す。同名ヘッダーは引数側で置き換える。
+    /// Returns the response with the given headers applied, replacing any of the same name.
     ///
-    /// ミドルウェア（CORS・セキュリティヘッダー等）が使う。**全てのレスポンス型が
-    /// 実装しなければならない。** 以前は `HeaderModifiableResponse` という別プロトコルで
-    /// 任意適合にし、未適合の型には黙って元のレスポンスを返していたが、それだと
-    /// ストリームレスポンスに対して CORS ヘッダーが無言で落ちた。実装漏れが
-    /// コンパイルエラーになるよう基底プロトコルの要件にしている。
+    /// This is a requirement of the base protocol on purpose. It was once an opt-in refinement,
+    /// and responses that did not adopt it silently kept their original headers — which meant CORS
+    /// headers vanished from streaming responses with nothing failing. As a base requirement,
+    /// forgetting it is a compile error.
+    ///
+    /// - Parameter headers: Headers to add or replace.
     func addingHeaders(_ headers: [String: String]) -> Self
 }

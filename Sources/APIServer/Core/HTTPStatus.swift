@@ -1,15 +1,24 @@
-/// HTTPステータスコード
+/// An HTTP status line — numeric code plus reason phrase — that keeps status handling
+/// free of the underlying web framework's types.
+///
+/// Equality and hashing cover both stored properties, so a status built with the default
+/// empty reason phrase is *not* equal to the matching constant: `HTTPStatus(code: 200) != .ok`.
+/// Compare `code` directly when the phrase is irrelevant.
 public struct HTTPStatus: Sendable, Equatable, Hashable {
+    /// The numeric status code, such as `200` or `404`.
     public let code: Int
+
+    /// The reason phrase sent alongside the code, empty when none was supplied.
     public let reasonPhrase: String
 
-    /// カスタム HTTP ステータスコードを作成する。
+    /// Creates a status from a raw code.
     ///
-    /// 標準的なケースには `.ok`、`.notFound` 等の静的プロパティを使用すること。
+    /// Prefer the static constants (`.ok`, `.notFound`, …) for standard codes; they carry the
+    /// conventional reason phrase, which bare initialization does not.
     ///
     /// - Parameters:
-    ///   - code: HTTP ステータスコード（例: 200、404）
-    ///   - reasonPhrase: 理由フレーズ（省略時は空文字）
+    ///   - code: The numeric status code, such as `200` or `404`.
+    ///   - reasonPhrase: The reason phrase; empty by default.
     public init(code: Int, reasonPhrase: String = "") {
         self.code = code
         self.reasonPhrase = reasonPhrase
@@ -82,15 +91,15 @@ public struct HTTPStatus: Sendable, Equatable, Hashable {
 
     // MARK: - Helpers
 
-    /// 成功ステータス（2xx）かどうか
+    /// Whether the code falls in the 2xx range.
     public var isSuccess: Bool { (200..<300).contains(code) }
 
-    /// リダイレクトステータス（3xx）かどうか
+    /// Whether the code falls in the 3xx range.
     public var isRedirect: Bool { (300..<400).contains(code) }
 
-    /// クライアントエラー（4xx）かどうか
+    /// Whether the code falls in the 4xx range.
     public var isClientError: Bool { (400..<500).contains(code) }
 
-    /// サーバーエラー（5xx）かどうか
+    /// Whether the code falls in the 5xx range.
     public var isServerError: Bool { (500..<600).contains(code) }
 }

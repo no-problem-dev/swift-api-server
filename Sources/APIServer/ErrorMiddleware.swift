@@ -2,11 +2,13 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// APIContract用のエラーミドルウェア
+/// Converts every error thrown downstream into a JSON error body.
 ///
-/// `APIContractError`をキャッチして適切なJSONレスポンスに変換します。
-///
-/// 使用方法: `server.useErrorMiddleware()` を呼び出してください。
+/// Four cases are handled, in order: contract errors keep their own status and error code;
+/// framework abort errors keep their status but are reported as `VAPOR_ABORT`; decoding failures
+/// become `400` with the offending coding path in the message; anything else becomes `500` with
+/// `localizedDescription`, which for a plain Swift error is the type name rather than a
+/// human-readable sentence. Installed by `ServerApplication.useErrorMiddleware()`.
 struct APIContractErrorMiddleware: AsyncMiddleware {
 
     init() {}
@@ -20,14 +22,11 @@ struct APIContractErrorMiddleware: AsyncMiddleware {
         } catch let error as any APIContractError {
             return try encodeErrorResponse(error, for: request)
         } catch let error as AbortError {
-            // VaporのAbortErrorをそのまま処理
             return try encodeAbortError(error, for: request)
         } catch let error as DecodingError {
-            // デコーディングエラーをBad Requestとして処理
             let httpError = HTTPError.badRequest(decodingErrorMessage(error))
             return try encodeErrorResponse(httpError, for: request)
         } catch {
-            // その他のエラーは500 Internal Server Error
             let httpError = HTTPError.internalError(error.localizedDescription)
             return try encodeErrorResponse(httpError, for: request)
         }

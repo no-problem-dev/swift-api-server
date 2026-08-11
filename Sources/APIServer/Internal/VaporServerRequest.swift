@@ -6,8 +6,8 @@ struct VaporServerRequest: ServerRequest {
     let request: Request
 
     var pathParameters: [String: String] {
-        // Vaporのパラメータは動的に取得する必要があるため、
-        // 実際にはルート登録時に設定される
+        // Always empty. Path parameters are bound during route dispatch, which happens after the
+        // middleware chain has run, so there is nothing to report at this point.
         [:]
     }
 

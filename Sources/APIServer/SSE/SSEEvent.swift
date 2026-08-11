@@ -1,19 +1,19 @@
 import Foundation
 
-/// Server-Sent Event
+/// One event in a Server-Sent Events stream, as defined by the WHATWG HTML Standard.
 ///
-/// WHATWG Server-Sent Events仕様に準拠したイベント型。
-/// https://html.spec.whatwg.org/multipage/server-sent-events.html
+/// Every field is optional because the format allows it: an event with nothing set serializes to a
+/// blank line, which browsers read as a heartbeat.
 ///
-/// ## 使用例
+/// ## Example
 /// ```swift
-/// // データのみ
+/// // Data only
 /// let event = SSEEvent(data: "Hello, World!")
 ///
-/// // イベント名付き
+/// // With a type the client can listen for
 /// let event = SSEEvent(data: jsonString, event: "progress")
 ///
-/// // 完全なイベント
+/// // Every field
 /// let event = SSEEvent(
 ///     data: jsonString,
 ///     event: "update",
@@ -22,33 +22,29 @@ import Foundation
 /// )
 /// ```
 public struct SSEEvent: Sendable, Hashable {
-    /// イベントデータ
-    ///
-    /// 複数行のデータも対応（各行が `data:` フィールドとして送信されます）
+    /// The payload. Newlines are permitted and become one `data:` line each, which the client
+    /// rejoins with newlines.
     public let data: String?
 
-    /// イベントタイプ（オプション）
-    ///
-    /// クライアント側で `addEventListener(type, handler)` でリスンする際のイベント名
+    /// The event name clients listen for with `addEventListener(type:)`. Without it, an event
+    /// arrives at the default `message` handler.
     public let event: String?
 
-    /// イベントID（オプション）
-    ///
-    /// クライアントが再接続時に `Last-Event-ID` ヘッダーで送信する識別子
+    /// The identifier a client echoes in `Last-Event-ID` when it reconnects, letting a server
+    /// resume where the connection dropped.
     public let id: String?
 
-    /// 再接続時間（ミリ秒、オプション）
-    ///
-    /// クライアントの再接続間隔を指定
+    /// The delay in milliseconds a client should wait before reconnecting. It persists on the
+    /// client, so sending it once changes the interval for the rest of the stream.
     public let retry: Int?
 
-    /// イニシャライザ
+    /// Creates an event.
     ///
     /// - Parameters:
-    ///   - data: イベントデータ
-    ///   - event: イベントタイプ（デフォルト: nil）
-    ///   - id: イベントID（デフォルト: nil）
-    ///   - retry: 再接続時間（ミリ秒、デフォルト: nil）
+    ///   - data: The payload; may span multiple lines.
+    ///   - event: The event name clients can listen for.
+    ///   - id: The identifier for resuming after a reconnect.
+    ///   - retry: The reconnection delay in milliseconds.
     public init(
         data: String? = nil,
         event: String? = nil,
@@ -62,14 +58,18 @@ public struct SSEEvent: Sendable, Hashable {
         self._comment = nil
     }
 
-    /// Encodableな値からイベントを作成
+    /// Creates an event whose data is the JSON encoding of a value.
+    ///
+    /// The encoder defaults to a plain `JSONEncoder`, not the package's ISO 8601 one — pass
+    /// `.apiDefault` to match how the rest of the package writes dates.
     ///
     /// - Parameters:
-    ///   - value: JSONエンコード可能な値
-    ///   - event: イベントタイプ（オプション）
-    ///   - id: イベントID（オプション）
-    ///   - encoder: JSONEncoder（デフォルト: 標準設定）
-    /// - Returns: SSEEvent
+    ///   - value: The value to encode into `data`.
+    ///   - event: The event name clients can listen for.
+    ///   - id: The identifier for resuming after a reconnect.
+    ///   - encoder: The encoder to use.
+    /// - Throws: `SSEEncodingError.invalidUTF8` if the encoded bytes are not valid UTF-8, plus
+    ///   whatever `encoder` throws.
     public static func json<T: Encodable>(
         _ value: T,
         event: String? = nil,
@@ -83,48 +83,47 @@ public struct SSEEvent: Sendable, Hashable {
         return SSEEvent(data: jsonString, event: event, id: id)
     }
 
-    /// コメントイベントを作成（キープアライブ用）
+    /// Creates a comment, which clients ignore — the usual way to keep an idle connection open
+    /// through proxies that close it.
     ///
-    /// - Parameter comment: コメントテキスト
-    /// - Returns: コメントとして送信されるイベント
+    /// - Parameter comment: The text after the leading colon. Keep it on one line; embedded
+    ///   newlines are written verbatim and break the framing.
     public static func comment(_ comment: String) -> SSEEvent {
         SSEEvent(data: nil, event: nil, id: nil, retry: nil, comment: comment)
     }
 
-    /// SSE形式の文字列に変換
+    /// Serializes the event to wire format, terminated by the blank line that dispatches it.
     ///
-    /// - Returns: SSE仕様に準拠したフォーマット済み文字列
+    /// Fields are emitted in a fixed order — `event`, `id`, `retry`, `data`, comment — and an
+    /// event with no fields at all becomes a lone newline.
+    ///
+    /// - Returns: The bytes to write, as a UTF-8 string.
     public func formatted() -> String {
         var lines: [String] = []
 
-        // イベントタイプ
         if let event = event {
             lines.append("event: \(event)")
         }
 
-        // ID
         if let id = id {
             lines.append("id: \(id)")
         }
 
-        // 再接続時間
         if let retry = retry {
             lines.append("retry: \(retry)")
         }
 
-        // データ（複数行対応）
+        // Each line of a multi-line payload becomes its own `data:` field; the client rejoins them.
         if let data = data {
             for line in data.split(separator: "\n", omittingEmptySubsequences: false) {
                 lines.append("data: \(line)")
             }
         }
 
-        // コメント
         if let comment = _comment {
             lines.append(": \(comment)")
         }
 
-        // 空のイベントでも終端は必要
         if lines.isEmpty {
             return "\n"
         }
@@ -134,10 +133,8 @@ public struct SSEEvent: Sendable, Hashable {
 
     // MARK: - Internal
 
-    /// コメント（内部用）
     private let _comment: String?
 
-    /// コメント付きイニシャライザ（内部用）
     private init(
         data: String?,
         event: String?,
@@ -156,9 +153,9 @@ public struct SSEEvent: Sendable, Hashable {
 
 // MARK: - Errors
 
-/// SSEエンコーディングエラー
+/// A failure while turning a value into an event payload.
 public enum SSEEncodingError: Error, LocalizedError {
-    /// 無効なUTF-8エンコーディング
+    /// The encoded bytes were not valid UTF-8, so they cannot be sent as event data.
     case invalidUTF8
 
     public var errorDescription: String? {
@@ -171,24 +168,26 @@ public enum SSEEncodingError: Error, LocalizedError {
 
 // MARK: - SSE Constants
 
-/// SSE関連の定数
+/// The header values an SSE response has to send.
 public enum SSEConstants {
-    /// SSEのContent-Type
+    /// The media type that makes a client treat the body as an event stream.
     public static let contentType = "text/event-stream"
 
-    /// キャッシュ無効化ヘッダー値
+    /// Keeps intermediaries from serving a cached copy of a stream that never repeats.
     public static let cacheControl = "no-cache"
 
-    /// 接続維持ヘッダー値
+    /// Keeps the connection open for the life of the stream.
     public static let connection = "keep-alive"
 
-    /// バッファリング無効化（nginx等）
+    /// Value for `X-Accel-Buffering`. Without it, nginx and similar proxies buffer the whole
+    /// response and events arrive only when the stream ends.
     public static let noBuffering = "no"
 
-    /// デフォルト再接続時間（ミリ秒）
+    /// A reasonable reconnection delay in milliseconds, for callers that want to send `retry`.
+    /// Not applied automatically.
     public static let defaultRetry = 3000
 
-    /// SSEレスポンス用のデフォルトヘッダー
+    /// The four headers above, ready to apply to a response.
     public static let defaultHeaders: [String: String] = [
         "Content-Type": contentType,
         "Cache-Control": cacheControl,

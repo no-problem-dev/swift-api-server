@@ -2,7 +2,7 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// Vapor ベースの Routes 実装
+/// The route registrar handed out by a server, backed by the underlying web framework.
 public struct APIServerRoutes: Routes, @unchecked Sendable {
     let routes: RoutesBuilder
 
@@ -16,12 +16,11 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
 
     // MARK: - Simple Routes
 
-    /// GET ルートを登録する。
+    /// Registers a GET route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -35,12 +34,11 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
         return self
     }
 
-    /// POST ルートを登録する。
+    /// Registers a POST route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -54,12 +52,11 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
         return self
     }
 
-    /// PUT ルートを登録する。
+    /// Registers a PUT route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func put<Response: Encodable & Sendable>(
         _ path: String...,
@@ -73,12 +70,11 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
         return self
     }
 
-    /// DELETE ルートを登録する。
+    /// Registers a DELETE route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func delete<Response: Encodable & Sendable>(
         _ path: String...,
@@ -92,12 +88,11 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
         return self
     }
 
-    /// PATCH ルートを登録する。
+    /// Registers a PATCH route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -113,10 +108,9 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
 
     // MARK: - Grouping
 
-    /// 共通パスプレフィックスを持つルートグループを作成する。
+    /// Creates a group that prefixes every route registered on it with the given path.
     ///
-    /// - Parameter path: グループのパスプレフィックス（可変長）
-    /// - Returns: `APIServerRouteGroup`
+    /// - Parameter path: The path components to prefix with.
     public func group(_ path: String...) -> APIServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return APIServerRouteGroup(routes: routes.grouped(components))
@@ -124,10 +118,12 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
-    /// `APIService` をマウントし、サービス定義からルートを自動登録する。
+    /// Mounts a service under its contract group's base path.
     ///
-    /// - Parameter service: マウントする APIService インスタンス
-    /// - Returns: マウント結果の `APIRoutes`
+    /// Mounting alone serves nothing — register the endpoints on the result, usually in one call
+    /// through the group's generated `registerAll`.
+    ///
+    /// - Parameter service: The service to mount.
     public func mount<S: APIService>(
         _ service: S
     ) -> APIRoutes<S.Group, S> {
@@ -135,18 +131,17 @@ public struct APIServerRoutes: Routes, @unchecked Sendable {
     }
 }
 
-/// Vapor ベースの RouteGroup 実装
+/// A route registrar scoped under a path prefix, produced by `group(_:)`.
 public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
     let routes: RoutesBuilder
 
     // MARK: - Simple Routes
 
-    /// GET ルートを登録する。
+    /// Registers a GET route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -160,12 +155,11 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
-    /// POST ルートを登録する。
+    /// Registers a POST route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -179,12 +173,11 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
-    /// PUT ルートを登録する。
+    /// Registers a PUT route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func put<Response: Encodable & Sendable>(
         _ path: String...,
@@ -198,12 +191,11 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
-    /// DELETE ルートを登録する。
+    /// Registers a DELETE route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func delete<Response: Encodable & Sendable>(
         _ path: String...,
@@ -217,12 +209,11 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
         return self
     }
 
-    /// PATCH ルートを登録する。
+    /// Registers a PATCH route whose returned value is JSON-encoded and answered as `200 OK`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント（可変長）
-    ///   - handler: レスポンスを返す非同期ハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the value to encode.
     @discardableResult
     public func patch<Response: Encodable & Sendable>(
         _ path: String...,
@@ -238,10 +229,9 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - Grouping
 
-    /// サブグループを作成する。
+    /// Creates a nested group, prefixed with this group's path and then the given one.
     ///
-    /// - Parameter path: サブグループのパスプレフィックス（可変長）
-    /// - Returns: `APIServerRouteGroup`
+    /// - Parameter path: The path components to prefix with.
     public func group(_ path: String...) -> APIServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return APIServerRouteGroup(routes: routes.grouped(components))
@@ -249,10 +239,12 @@ public struct APIServerRouteGroup: RouteGroup, @unchecked Sendable {
 
     // MARK: - APIContract Mounting
 
-    /// `APIService` をマウントし、サービス定義からルートを自動登録する。
+    /// Mounts a service under its contract group's base path.
     ///
-    /// - Parameter service: マウントする APIService インスタンス
-    /// - Returns: マウント結果の `APIRoutes`
+    /// Mounting alone serves nothing — register the endpoints on the result, usually in one call
+    /// through the group's generated `registerAll`.
+    ///
+    /// - Parameter service: The service to mount.
     public func mount<S: APIService>(
         _ service: S
     ) -> APIRoutes<S.Group, S> {

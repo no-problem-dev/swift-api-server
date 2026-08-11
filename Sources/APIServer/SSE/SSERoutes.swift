@@ -5,11 +5,17 @@ internal import Vapor
 // MARK: - SSE Route Extensions for VaporServerApplication
 
 extension VaporServerApplication {
-    /// SSEストリームルートを登録（コンテキスト不要）
+    /// Registers a GET route that streams Server-Sent Events.
     ///
-    /// AsyncSequenceからSSEイベントをストリーミングするエンドポイントを登録します。
+    /// The response opens with a comment line as soon as the handler returns, so the client sees
+    /// the connection established without waiting for a first event. Events are then written in
+    /// the order the sequence yields them, and the response ends when the sequence finishes.
     ///
-    /// ## 使用例
+    /// If the sequence throws, the error is logged and the connection is closed normally — the
+    /// client sees a clean end of stream, not an error, and will reconnect. Send a terminal event
+    /// of your own if the client needs to distinguish the two.
+    ///
+    /// ## Example
     /// ```swift
     /// server.sse("events") {
     ///     AsyncStream { continuation in
@@ -20,9 +26,9 @@ extension VaporServerApplication {
     /// ```
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - handler: SSEイベントのAsyncSequenceを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the events to stream. It runs before the response is sent, so
+    ///     throwing from it yields an ordinary error response rather than a broken stream.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -36,11 +42,12 @@ extension VaporServerApplication {
         return self
     }
 
-    /// SSEストリームルートを登録（コンテキスト付き）
+    /// Registers a GET route that streams Server-Sent Events, with the caller's identity.
     ///
-    /// ServiceContextを受け取るバージョン。認証情報などにアクセスできます。
+    /// The context is `.anonymous` unless the authentication middleware verified a token. Nothing
+    /// enforces authentication for you — reject in the handler, as below.
     ///
-    /// ## 使用例
+    /// ## Example
     /// ```swift
     /// server.sse("user", "events") { context in
     ///     guard case .authenticated(let userId) = context else {
@@ -51,9 +58,8 @@ extension VaporServerApplication {
     /// ```
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - handler: ServiceContextとSSEイベントのAsyncSequenceを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Receives the caller's context and produces the events to stream.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -68,14 +74,14 @@ extension VaporServerApplication {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト不要）
+    /// Registers a POST route that streams Server-Sent Events.
     ///
-    /// リクエストボディを受け取ってSSEストリームを返すエンドポイント用。
+    /// POST is the usual choice when starting a stream requires parameters too large for a query
+    /// string. The handler here does not receive the body — use the `body:` overload for that.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - handler: SSEイベントのAsyncSequenceを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Produces the events to stream.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -89,12 +95,11 @@ extension VaporServerApplication {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト付き）
+    /// Registers a POST route that streams Server-Sent Events, with the caller's identity.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - handler: ServiceContextとSSEイベントのAsyncSequenceを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Receives the caller's context and produces the events to stream.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -109,15 +114,17 @@ extension VaporServerApplication {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト + ボディ付き）
+    /// Registers a POST route that streams Server-Sent Events from a decoded request body.
     ///
-    /// リクエストボディをデコードしてSSEストリームを返すエンドポイント用。
+    /// The body is decoded with ISO 8601 dates and key names taken as written. A body that fails
+    /// to decode is rejected before the handler runs, so the client gets an error response rather
+    /// than an empty stream.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - body: デコードするボディの型
-    ///   - handler: ServiceContext、ボディ、SSEイベントのAsyncSequenceを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - body: The type to decode the request body into.
+    ///   - handler: Receives the caller's context and the decoded body, and produces the events
+    ///     to stream.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,
@@ -138,7 +145,7 @@ extension VaporServerApplication {
 // MARK: - SSE Route Extensions for APIServerRouteGroup
 
 extension APIServerRouteGroup {
-    /// SSEストリームルートを登録（コンテキスト不要）
+    /// Registers a GET route that streams Server-Sent Events, scoped to this group's path.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -152,7 +159,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// SSEストリームルートを登録（コンテキスト付き）
+    /// Registers a GET route that streams Server-Sent Events, with the caller's identity.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -167,7 +174,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト不要）
+    /// Registers a POST route that streams Server-Sent Events, scoped to this group's path.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -181,7 +188,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト付き）
+    /// Registers a POST route that streams Server-Sent Events, with the caller's identity.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -196,7 +203,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト + ボディ付き）
+    /// Registers a POST route that streams Server-Sent Events from a decoded request body.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,
@@ -217,7 +224,7 @@ extension APIServerRouteGroup {
 // MARK: - SSE Route Extensions for ServerRouteGroup
 
 extension ServerRouteGroup {
-    /// SSEストリームルートを登録（コンテキスト不要）
+    /// Registers a GET route that streams Server-Sent Events, scoped to this group's path.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -231,7 +238,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// SSEストリームルートを登録（コンテキスト付き）
+    /// Registers a GET route that streams Server-Sent Events, with the caller's identity.
     @discardableResult
     public func sse<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -246,7 +253,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト不要）
+    /// Registers a POST route that streams Server-Sent Events, scoped to this group's path.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -260,7 +267,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト付き）
+    /// Registers a POST route that streams Server-Sent Events, with the caller's identity.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable>(
         _ path: String...,
@@ -275,7 +282,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// POSTでSSEストリームを開始するルートを登録（コンテキスト + ボディ付き）
+    /// Registers a POST route that streams Server-Sent Events from a decoded request body.
     @discardableResult
     public func ssePost<S: AsyncSequence & Sendable, Body: Decodable & Sendable>(
         _ path: String...,

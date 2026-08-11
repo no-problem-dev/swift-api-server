@@ -5,8 +5,9 @@ import APIContract
 // MARK: - RoutesBuilder Extension (Internal)
 
 extension RoutesBuilder {
-    /// API グループをマウント（内部使用）
-    /// Service.Group から型推論
+    /// Groups the routes of a service under its contract group's base path.
+    ///
+    /// The group is inferred from `Service.Group`, so the caller never names it.
     @discardableResult
     func mount<Service: APIService>(
         _ service: Service
@@ -16,7 +17,7 @@ extension RoutesBuilder {
         return APIRoutes(routes: routeGroup, service: service)
     }
 
-    /// 個別のエンドポイントを登録する（内部使用）
+    /// Registers one endpoint, answering with its JSON-encoded output.
     @discardableResult
     func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
@@ -26,23 +27,20 @@ extension RoutesBuilder {
         let pathComponents = endpoint.subPath.toPathComponents
 
         self.on(method, pathComponents) { request async throws -> Response in
-            // パスパラメータとクエリパラメータを収集
             let input = try request.decodeInput(Endpoint.self)
 
-            // 認証コンテキストを構築
+            // Throws when the endpoint requires authentication and the request carries none.
             let context = try request.buildServiceContext(for: Endpoint.self)
 
-            // ハンドラーを実行
             let output = try await handler(input, context)
 
-            // レスポンスをエンコード
             return try request.encodeOutput(output)
         }
 
         return self
     }
 
-    /// EmptyOutputを返すエンドポイントを登録する（内部使用）
+    /// Registers an endpoint with no response body, answering `204 No Content`.
     @discardableResult
     func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
@@ -67,14 +65,16 @@ extension RoutesBuilder {
 // MARK: - Path Components Conversion
 
 extension String {
-    /// サブパスをVaporのPathComponentに変換（内部使用）
+    /// Splits a contract sub-path into route components.
+    ///
+    /// `:name` segments become parameter components, which the string-literal conversion already
+    /// handles, so both branches below are deliberately identical.
     var toPathComponents: [PathComponent] {
         guard !isEmpty else { return [] }
 
         return self.split(separator: "/").map { segment in
             let str = String(segment)
             if str.hasPrefix(":") {
-                // パスパラメータ
                 return PathComponent(stringLiteral: str)
             } else {
                 return PathComponent(stringLiteral: str)

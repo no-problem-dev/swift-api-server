@@ -2,12 +2,12 @@ import XCTest
 import XCTVapor
 @testable import APIServer
 
-/// ミドルウェアが足したヘッダーが実際に送出されるまで届くことの回帰テスト。
+/// Regression tests proving that headers a middleware adds survive all the way to the wire.
 ///
-/// 以前は `addingHeaders` が `HeaderModifiableResponse` 任意適合で、未適合の
-/// `AnyStreamResponse` には黙って元のレスポンスを返していた。さらに
-/// `VaporMiddlewareAdapter` は `AnyStreamResponse.headers` を捨てて underlying を
-/// そのまま返していたため、**ストリームレスポンスに対して CORS ヘッダーが二重に無言で落ちた**。
+/// `addingHeaders` used to be an opt-in refinement, and a type that did not adopt it silently
+/// returned itself unchanged. The adapter then discarded the wrapper's headers and returned the
+/// underlying response as-is. Both failures were silent, and together they dropped CORS headers
+/// from every streaming response.
 final class ResponseHeaderTests: XCTestCase {
 
     func testDataResponseCarriesAddedHeaders() {
@@ -25,7 +25,7 @@ final class ResponseHeaderTests: XCTestCase {
         XCTAssertEqual(result.headers["X-Dup"], "new")
     }
 
-    /// 本命: 型消去ストリームでもヘッダーが保持される（旧実装はここで黙って落ちた）。
+    /// The wrapper keeps added headers instead of discarding them.
     func testAnyStreamResponseRetainsAddedHeaders() {
         let underlying = Response(status: .ok)
         let wrapped = AnyStreamResponse(
@@ -43,7 +43,7 @@ final class ResponseHeaderTests: XCTestCase {
         )
     }
 
-    /// 本命: snapshot 側のヘッダーが、実際に送出される underlying へ反映される。
+    /// The adapter copies the wrapper's headers onto the response that is actually written.
     func testAdapterAppliesStreamHeadersToUnderlyingResponse() {
         let underlying = Response(status: .ok)
         underlying.headers.replaceOrAdd(name: "X-Original", value: "keep")

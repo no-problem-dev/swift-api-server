@@ -5,18 +5,17 @@ import APIContract
 // MARK: - Request Decoding
 
 extension Request {
-    /// APIContractのInput型にリクエストをデコード
+    /// Builds an endpoint's input from the path, the query string and the body.
     ///
-    /// パスパラメータ、クエリパラメータ、ボディを統合してInput型を構築します。
+    /// Dates in the body are decoded as ISO 8601. Query values are percent-decoded but `+` is not
+    /// treated as a space, and a repeated key keeps only its last occurrence.
     func decodeInput<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type
     ) throws -> Endpoint.Input where Endpoint.Input == Endpoint, Endpoint: APIInput {
-        // パスパラメータを収集（Vaporのパスパラメータを取得）
         var pathParams: [String: String] = [:]
-        // Vaporはパスパラメータを `:name` 形式で登録し、`parameters.get("name")` で取得
-        // pathTemplate（Group.basePath + subPath）からパスパラメータ名を抽出
-        // これにより、ネストされたリソース（例: /v1/books/:bookId/chats）でも
-        // basePath に定義されたパスパラメータを正しく抽出できる
+        // Parameter names are read from the endpoint's full path template — the group's base path
+        // plus the sub-path — not just the sub-path. That is what lets a nested resource such as
+        // `/v1/books/:bookId/chats` see `bookId`, which is declared on the base path.
         for segment in Endpoint.pathTemplate.split(separator: "/") {
             let str = String(segment)
             if str.hasPrefix(":") {
@@ -27,7 +26,6 @@ extension Request {
             }
         }
 
-        // クエリパラメータを収集
         var queryParams: [String: String] = [:]
         if let queryItems = self.url.query {
             for item in queryItems.split(separator: "&") {
@@ -40,7 +38,6 @@ extension Request {
             }
         }
 
-        // ボディをデコード
         let bodyData: Data?
         if let body = self.body.data {
             bodyData = Data(buffer: body)
@@ -48,7 +45,6 @@ extension Request {
             bodyData = nil
         }
 
-        // APIInput.decode を使用してInput型を構築
         return try Endpoint.Input.decode(
             pathParameters: pathParams,
             queryParameters: queryParams,
@@ -57,9 +53,17 @@ extension Request {
         )
     }
 
-    /// ServiceContextを構築
+    /// Derives the handler's context from the endpoint's authentication requirement.
     ///
-    /// リクエストの認証状態を確認し、適切なコンテキストを返します。
+    /// `.none` passes the identity through when one is present and yields `.anonymous` otherwise.
+    /// Every other requirement demands an identity and throws `HTTPError.unauthorized` without it.
+    ///
+    /// All three demanding cases are treated identically: whichever credential the endpoint
+    /// nominates, the identity can only have been established by the Bearer-token middleware,
+    /// which is the sole authenticator shipped here.
+    ///
+    /// - Throws: `HTTPError.unauthorized` when the endpoint requires authentication and the
+    ///   request carries no verified identity.
     func buildServiceContext<Endpoint: APIContract>(
         for endpoint: Endpoint.Type
     ) throws -> ServiceContext {
@@ -67,15 +71,12 @@ extension Request {
 
         switch authRequirement {
         case .none:
-            // 認証不要 - ユーザーIDがあれば使う
             if let userId = self.authenticatedUserId {
                 return .authenticated(userId: userId)
             }
             return .anonymous
 
         case .bearer, .apiKey, .queryParam:
-            // 必須認証 - ユーザーIDがなければエラー
-            // (新 API では .required → .bearer/.apiKey/.queryParam に細分化)
             guard let userId = self.authenticatedUserId else {
                 throw HTTPError.unauthorized
             }
@@ -83,17 +84,13 @@ extension Request {
         }
     }
 
-    /// 認証済みユーザーIDを取得
-    ///
-    /// 認証ミドルウェアによって設定されたユーザーIDを返します。
-    /// ミドルウェアは `request.auth.login(user)` を使用してユーザーを設定する必要があります。
+    /// The identity established earlier in the middleware chain, or `nil` if the request is
+    /// unauthenticated.
     var authenticatedUserId: String? {
-        // Vapor標準のAuthenticatableを使用
-        // FirebaseAuthServerのAuthenticatedUserなど
         self.auth.get(AuthenticatedUser.self)?.id
     }
 
-    /// レスポンスをエンコード
+    /// Encodes a handler's return value as a `200 OK` JSON response.
     func encodeOutput<Output: Encodable & Sendable>(_ output: Output) throws -> Response {
         let encoder = JSONEncoder.apiDefault
         let data = try encoder.encode(output)
@@ -111,7 +108,7 @@ extension Request {
 
 // MARK: - Authenticated User
 
-/// 認証済みユーザーを表す型（内部使用）
+/// The verified identity stored on a request, carrying only the user ID the provider returned.
 struct AuthenticatedUser: Authenticatable, Sendable {
     let id: String
 
@@ -123,7 +120,10 @@ struct AuthenticatedUser: Authenticatable, Sendable {
 // MARK: - JSONDecoder Extension
 
 extension JSONDecoder {
-    /// API用のデフォルトJSONDecoder
+    /// A decoder that reads dates as ISO 8601 and leaves key names untouched.
+    ///
+    /// Contract endpoints decode their bodies with this. Webhook routes deliberately do not —
+    /// they convert keys from `snake_case` instead.
     static var apiDefault: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

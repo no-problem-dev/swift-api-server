@@ -36,7 +36,7 @@ final class DecodeTests: XCTestCase {
                 try await handler.handle(input, context: ctx)
             }
 
-        // URLエンコードされた値
+        // Percent-encoded value.
         try await app.test(.GET, "/test/items/item%2Fwith%2Fslashes") { res async throws in
             XCTAssertEqual(res.status, .ok)
             let item = try res.content.decode(TestItem.self)
@@ -198,7 +198,7 @@ final class DecodeTests: XCTestCase {
 
     // MARK: - Nested Resource Path Parameter Tests
 
-    /// basePathにパスパラメータ、subPathが空のケース
+    /// Parameter on the base path only, with an empty sub-path.
     /// GET /v1/books/:bookId/chats
     func testNestedResourceListWithBasePathParam() async throws {
         let app = try await Application.make(.testing)
@@ -217,7 +217,7 @@ final class DecodeTests: XCTestCase {
         }
     }
 
-    /// basePathにパスパラメータ、subPathにも追加パラメータのケース
+    /// Parameters on both the base path and the sub-path.
     /// GET /v1/books/:bookId/chats/:chatId
     func testNestedResourceGetWithMultiplePathParams() async throws {
         let app = try await Application.make(.testing)
@@ -237,7 +237,7 @@ final class DecodeTests: XCTestCase {
         }
     }
 
-    /// basePathにパスパラメータ + ボディのケース
+    /// A base-path parameter combined with a request body.
     /// POST /v1/books/:bookId/chats
     func testNestedResourceCreateWithBasePathParamAndBody() async throws {
         let app = try await Application.make(.testing)
@@ -259,7 +259,7 @@ final class DecodeTests: XCTestCase {
         }
     }
 
-    /// DELETE: 複数パスパラメータのケース
+    /// Two path parameters, one from each level.
     /// DELETE /v1/books/:bookId/chats/:chatId
     func testNestedResourceDeleteWithMultiplePathParams() async throws {
         let app = try await Application.make(.testing)
@@ -279,7 +279,7 @@ final class DecodeTests: XCTestCase {
         }
     }
 
-    /// UUID形式のパスパラメータのケース
+    /// A UUID-shaped path parameter, which must not be split on its hyphens.
     func testNestedResourceWithUUIDPathParams() async throws {
         let app = try await Application.make(.testing)
         defer { Task { try await app.asyncShutdown() } }

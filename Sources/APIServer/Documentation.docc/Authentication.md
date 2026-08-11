@@ -1,22 +1,21 @@
-# 認証
+# Authentication
 
-Bearer トークンによる認証を実装する方法。
+Verify a Bearer token once, then let each endpoint decide what it requires.
 
 ## Overview
 
-APIServer は、`AuthenticationProvider` プロトコルと `server.useAuth(provider:)` を使って
-柔軟な認証システムを提供する。
+Authentication here is split in two. A middleware verifies the token and records who the caller is;
+the endpoint's own `auth` requirement decides whether an unauthenticated caller is acceptable.
+Nothing is rejected in the middleware, which is why a public and a protected route can sit side by
+side behind the same authenticator.
 
-## AuthenticationProvider の実装
+## Implementing a provider
 
-認証ロジックをカスタマイズするには `AuthenticationProvider` を実装する。
-`verifyToken(_:)` がトークンを検証し、成功時はユーザー ID を返す（失敗時は `throw`）：
+`AuthenticationProvider` has one job: turn a token into a user ID, or throw.
 
 ```swift
 struct MyAuthProvider: AuthenticationProvider {
     func verifyToken(_ token: String) async throws -> String {
-        // トークンを検証してユーザー ID を返す
-        // 無効なトークンの場合は throw する
         guard let userId = try? verifyJWT(token) else {
             throw AuthenticationError.invalidToken("Invalid JWT")
         }
@@ -25,51 +24,69 @@ struct MyAuthProvider: AuthenticationProvider {
 }
 ```
 
-## 認証ミドルウェアの設定
+The thrown error never reaches the client. It is logged at warning level and the request continues
+unauthenticated, so a caller sees `401` from the endpoint's requirement rather than the provider's
+message. Put anything you need to diagnose into the thrown error, not into a hoped-for response.
 
-`server.useAuth(provider:)` で認証を有効化する：
+## Installing the middleware
 
 ```swift
 let server = try await Server.create()
 
 server.useAuth(MyAuthProvider())
-server.useErrorMiddleware()  // 認証エラーを JSON レスポンスに変換
+server.useErrorMiddleware()  // renders the resulting 401 as JSON
 ```
 
-## 認証状態へのアクセス
-
-APIService ハンドラ内では `ServiceContext` から認証情報を取得する。
-`context.userId` で認証済みユーザー ID（未認証時は `nil`）にアクセスできる：
-
-```swift
-func getProfile(input: ProfileInput, context: ServiceContext) async throws -> ProfileOutput {
-    // 認証が必要なエンドポイント
-    let userId = try context.requireUserId()  // 未認証なら HTTPError.unauthorized を throw
-
-    // ユーザー情報を取得して返す
-    let user = try await fetchUser(id: userId)
-    return ProfileOutput(id: userId, name: user.name)
-}
-```
-
-`context.userId` は任意アクセス（`nil` チェックが必要）、
-`context.requireUserId()` は必須アクセス（未認証なら自動で 401 エラー）。
-
-## Bearer トークン形式
-
-認証ミドルウェアは以下の形式の `Authorization` ヘッダーを検出する：
+## The header it looks for
 
 ```
 Authorization: Bearer <token>
 ```
 
-`<token>` の部分が `AuthenticationProvider.verifyToken(_:)` に渡される。
-ヘッダーがない場合や検証失敗時でも次のハンドラに処理を渡す（エンドポイントの
-`auth` 要件で最終的な認証チェックが行われる）。
+The scheme is matched case-insensitively, so `bearer` works too. Everything after the first space
+is passed to `verifyToken(_:)` verbatim, including any trailing whitespace. A missing header, a
+different scheme, and a rejected token are all handled the same way: the request proceeds
+unauthenticated.
 
-## カスタム認証ミドルウェア
+## Reading identity in a handler
 
-`ServerMiddleware` を実装して独自の認証ロジックを追加することも可能：
+Contract handlers receive a `ServiceContext`:
+
+```swift
+func getProfile(input: ProfileInput, context: ServiceContext) async throws -> ProfileOutput {
+    let userId = try context.requireUserId()  // throws HTTPError.unauthorized when anonymous
+
+    let user = try await fetchUser(id: userId)
+    return ProfileOutput(id: userId, name: user.name)
+}
+```
+
+`context.userId` is the optional form; `context.requireUserId()` throws when there is no identity.
+For an endpoint that declares an `auth` requirement, the check has already happened before the
+handler runs — a request without an identity was rejected during dispatch, so `requireUserId()`
+inside such a handler is belt and braces rather than the real gate.
+
+All non-`none` requirements behave identically here. Whether an endpoint nominates a Bearer token,
+an API key or a query parameter, the identity can only have come from the Bearer-token middleware,
+which is the sole authenticator this package ships.
+
+Plain routes and SSE routes get no such enforcement. Their context is `.anonymous` unless a token
+was verified, and rejecting is entirely up to the handler:
+
+```swift
+server.sse("user", "events") { context in
+    guard case .authenticated(let userId) = context else {
+        throw HTTPError.unauthorized
+    }
+    return userEventStream(for: userId)
+}
+```
+
+## Custom authentication
+
+Implement ``ServerMiddleware`` when the built-in flow does not fit — for instance to skip
+verification on a set of paths. Match on the URL: ``ServerRequest/pathParameters`` is always empty
+in a middleware.
 
 ```swift
 struct ConditionalAuthMiddleware: ServerMiddleware {
@@ -80,19 +97,17 @@ struct ConditionalAuthMiddleware: ServerMiddleware {
         request: any ServerRequest,
         next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
     ) async throws -> any ServerResponse {
-        // 除外パスの場合は認証をスキップ
         if excludedPaths.contains(request.url.path) {
             return try await next(request)
         }
 
-        // Authorization ヘッダーからトークンを抽出
         guard let authHeader = request.headers["Authorization"],
               authHeader.lowercased().hasPrefix("bearer ") else {
             return try await next(request)
         }
 
         let token = String(authHeader.dropFirst("bearer ".count))
-        // カスタム認証ロジック...
+        // Verify the token, and reject by throwing.
         return try await next(request)
     }
 }
@@ -102,3 +117,7 @@ server.use(ConditionalAuthMiddleware(
     excludedPaths: ["/health", "/public"]
 ))
 ```
+
+A middleware cannot record an identity for later steps to read — the request it passes to `next` is
+discarded, and there is no mutable slot on ``ServerRequest``. A custom authenticator can therefore
+only reject; establishing identity for handlers goes through `useAuth(_:)`.

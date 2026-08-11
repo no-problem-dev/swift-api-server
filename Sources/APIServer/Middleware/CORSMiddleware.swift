@@ -1,16 +1,19 @@
 import APIContract
 
-/// CORS（Cross-Origin Resource Sharing）ミドルウェア
+/// Answers CORS preflights and attaches the access-control headers to every other response.
 ///
-/// クロスオリジンリクエストを許可するミドルウェア。
-/// `DataResponse`・`StreamResponse` どちらにも対応する。
-/// `server.use(CORSServerMiddleware())` で追加する。
+/// A request whose method is `OPTIONS` is answered here with `204 No Content` and never reaches a
+/// route handler, so an endpoint cannot implement `OPTIONS` while this middleware is installed.
+/// All other responses — buffered and streaming alike — pass through and gain the headers.
+///
+/// Register it first: headers are added on the way out, and a middleware that short-circuits
+/// earlier in the chain will produce a response this one never sees.
 public struct CORSServerMiddleware: ServerMiddleware {
     private let configuration: CORSConfiguration
 
-    /// CORS ミドルウェアを作成する。
+    /// Creates the middleware.
     ///
-    /// - Parameter configuration: CORS 設定（省略時はデフォルト設定）
+    /// - Parameter configuration: The policy to apply; permits every origin by default.
     public init(configuration: CORSConfiguration = .default()) {
         self.configuration = configuration
     }
@@ -19,7 +22,6 @@ public struct CORSServerMiddleware: ServerMiddleware {
         request: any ServerRequest,
         next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
     ) async throws -> any ServerResponse {
-        // プリフライトリクエストの処理
         if request.method == "OPTIONS" {
             return BasicDataResponse(
                 status: .noContent,
@@ -27,17 +29,16 @@ public struct CORSServerMiddleware: ServerMiddleware {
             )
         }
 
-        // 通常のリクエスト処理
         let response = try await next(request)
 
-        // CORSヘッダーを追加
         return response.addingHeaders(corsHeaders(for: request))
     }
 
     private func corsHeaders(for request: any ServerRequest) -> [String: String] {
         var headers: [String: String] = [:]
 
-        // Origin
+        // An allowed origin is echoed back rather than answered with `*`, which is what makes
+        // credentialed requests work. The header name is matched case-sensitively.
         if let origin = request.headers["Origin"] {
             if configuration.allowedOrigins.contains("*") ||
                configuration.allowedOrigins.contains(origin) {
@@ -47,27 +48,22 @@ public struct CORSServerMiddleware: ServerMiddleware {
             headers["Access-Control-Allow-Origin"] = "*"
         }
 
-        // Methods
         headers["Access-Control-Allow-Methods"] = configuration.allowedMethods
             .map { $0.rawValue }
             .joined(separator: ", ")
 
-        // Headers
         if !configuration.allowedHeaders.isEmpty {
             headers["Access-Control-Allow-Headers"] = configuration.allowedHeaders.joined(separator: ", ")
         }
 
-        // Credentials
         if configuration.allowCredentials {
             headers["Access-Control-Allow-Credentials"] = "true"
         }
 
-        // Max Age
         if let maxAge = configuration.maxAge {
             headers["Access-Control-Max-Age"] = String(maxAge)
         }
 
-        // Exposed Headers
         if !configuration.exposedHeaders.isEmpty {
             headers["Access-Control-Expose-Headers"] = configuration.exposedHeaders.joined(separator: ", ")
         }
@@ -76,38 +72,42 @@ public struct CORSServerMiddleware: ServerMiddleware {
     }
 }
 
-/// CORS 設定
+/// The access-control policy `CORSServerMiddleware` applies.
 ///
-/// `CORSServerMiddleware` に渡す設定値をまとめた型。
-/// `default()` または `custom(allowedOrigins:...)` ファクトリを使うのが簡便。
+/// The default value permits every origin, which is convenient in development and rarely what a
+/// deployed service wants.
 public struct CORSConfiguration: Sendable {
-    /// 許可するオリジン
+    /// Origins allowed to read responses. The single entry `"*"` permits all of them.
+    ///
+    /// Matching is exact — there is no wildcard within an entry, so `https://*.example.com` never
+    /// matches anything.
     public let allowedOrigins: [String]
 
-    /// 許可する HTTP メソッド
+    /// Methods advertised in the preflight answer. This list is advertisement only; it does not
+    /// stop a request whose method is absent from it.
     public let allowedMethods: [APIMethod]
 
-    /// 許可する HTTP ヘッダー
+    /// Request headers a browser may send. Omitted from the response entirely when empty.
     public let allowedHeaders: [String]
 
-    /// クライアントへ公開するレスポンスヘッダー
+    /// Response headers a browser may read beyond the CORS-safelisted ones. Omitted when empty.
     public let exposedHeaders: [String]
 
-    /// 認証情報（Cookie / 認証ヘッダー）を許可するか
+    /// Whether browsers may attach cookies and `Authorization` to cross-origin requests.
     public let allowCredentials: Bool
 
-    /// プリフライトレスポンスのキャッシュ時間（秒）。`nil` で無効
+    /// How long, in seconds, a browser may cache the preflight answer. `nil` omits the header.
     public let maxAge: Int?
 
-    /// CORS 設定を作成する。
+    /// Creates a policy from its parts.
     ///
     /// - Parameters:
-    ///   - allowedOrigins: 許可するオリジン（`["*"]` で全許可）
-    ///   - allowedMethods: 許可する HTTP メソッド
-    ///   - allowedHeaders: 許可するリクエストヘッダー
-    ///   - exposedHeaders: クライアントへ公開するレスポンスヘッダー
-    ///   - allowCredentials: 認証情報を許可するか
-    ///   - maxAge: プリフライトキャッシュ時間（秒、`nil` で無効）
+    ///   - allowedOrigins: Origins allowed to read responses; `["*"]` for all.
+    ///   - allowedMethods: Methods to advertise in preflight answers.
+    ///   - allowedHeaders: Request headers a browser may send.
+    ///   - exposedHeaders: Response headers a browser may read.
+    ///   - allowCredentials: Whether credentials may accompany cross-origin requests.
+    ///   - maxAge: Preflight cache lifetime in seconds; `nil` omits the header.
     public init(
         allowedOrigins: [String] = ["*"],
         allowedMethods: [APIMethod] = [.get, .post, .put, .patch, .delete, .options],
@@ -124,22 +124,23 @@ public struct CORSConfiguration: Sendable {
         self.maxAge = maxAge
     }
 
-    /// デフォルト設定
+    /// A policy that permits every origin and caches preflights for ten minutes.
     public static func `default`() -> CORSConfiguration {
         CORSConfiguration()
     }
 
-    /// カスタム CORS 設定を作成する。
-    ///
-    /// よく使うパラメータに絞ったファクトリ。`exposedHeaders`/`maxAge` が不要な場合に簡便。
+    /// Creates a policy from the four settings a deployed service usually needs to change,
+    /// leaving `exposedHeaders` empty and `maxAge` at its default.
     ///
     /// - Parameters:
-    ///   - allowedOrigins: 許可するオリジン（例: `["https://example.com"]`、`["*"]` で全許可）
-    ///   - allowedMethods: 許可する HTTP メソッド
-    ///   - allowedHeaders: 許可するリクエストヘッダー
-    ///   - allowCredentials: Cookie や `Authorization` ヘッダーなどの認証情報をクロスオリジンで許可するか。
-    ///     `true` にする場合、`allowedOrigins` に `"*"` を指定できない（セキュリティ制約）。
-    /// - Returns: `CORSConfiguration`
+    ///   - allowedOrigins: Origins allowed to read responses, such as `["https://example.com"]`.
+    ///   - allowedMethods: Methods to advertise in preflight answers.
+    ///   - allowedHeaders: Request headers a browser may send.
+    ///   - allowCredentials: Whether credentials may accompany cross-origin requests. Browsers
+    ///     reject a credentialed response whose allowed origin is `*`; nothing here rejects that
+    ///     combination, and because an allowed origin is echoed back verbatim, passing `["*"]`
+    ///     with credentials enabled works in practice and effectively trusts every origin.
+    /// - Returns: The policy.
     public static func custom(
         allowedOrigins: [String],
         allowedMethods: [APIMethod] = [.get, .post, .put, .patch, .delete, .options],

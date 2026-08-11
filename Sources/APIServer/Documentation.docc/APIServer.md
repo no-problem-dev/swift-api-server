@@ -1,6 +1,6 @@
 # ``APIServer``
 
-Vapor ウェブフレームワークの抽象化レイヤー。
+Build an HTTP server whose application code names no web framework.
 
 @Metadata {
     @PageColor(blue)
@@ -8,89 +8,87 @@ Vapor ウェブフレームワークの抽象化レイヤー。
 
 ## Overview
 
-APIServer は、アプリケーションコードを Vapor 固有の実装から独立させる抽象化レイヤー。
-プロトコルベースの設計により、テスト容易性と将来の拡張性を確保する。
+`APIServer` puts a protocol boundary in front of Vapor. Routes, middleware, requests and responses
+are declared in terms of this package's own types, and the framework backing them stays internal —
+so application code compiles, and can be tested, without importing Vapor at all.
 
-### 特徴
-
-- **Vapor 抽象化**: アプリケーションコードが Vapor に直接依存しない
-- **プロトコルベース設計**: テストしやすく、将来の拡張性を確保
-- **APIContract 統合**: `APIService` ベースの自動ルーティング
-- **ミドルウェアシステム**: CORS、認証、エラーハンドリングを標準装備
-- **Sendable 対応**: Swift 6 の厳格な並行処理に対応
-
-### クイックスタート
+Start from ``Server/create(environment:)``, register middleware and routes, then run:
 
 ```swift
 import APIServer
 
-// サーバーを作成（非同期初期化）
 let server = try await Server.create()
 
-// ルートを登録
 server.get("health") {
     ["status": "healthy"]
 }
 
-// ミドルウェアを追加
 server.use(CORSServerMiddleware())
 server.useErrorMiddleware()
 
-// サーバーを起動
 try await server.run()
 ```
 
+Handlers return `Encodable` values rather than responses. The value is JSON-encoded with ISO 8601
+dates and answered as `200 OK`; to control the status, throw an error the error middleware maps, or
+build a ``BasicDataResponse`` from a middleware.
+
+Three route families cover the shapes a service needs beyond plain JSON:
+
+- **Contract endpoints** — mount an `APIService` and let its group register every endpoint at once,
+  with inputs decoded and authentication enforced from the contract.
+- **Server-Sent Events** — `sse` and `ssePost` stream an `AsyncSequence` of ``SSEEvent`` and keep
+  the connection open until the sequence finishes.
+- **Webhooks** — deliveries decode from `snake_case` and hand the handler the headers alongside the
+  body, or the raw bytes when a signature has to be verified.
+
 ## Topics
 
-### はじめに
+### Essentials
 
 - <doc:GettingStarted>
 - <doc:Architecture>
-
-### コアコンポーネント
-
+- ``Server``
 - ``ServerApplication``
 - ``ServerEnvironment``
 - ``ServerLogger``
-- ``HTTPStatus``
-- ``Server``
 
-### ルーティング
+### Routing
 
 - ``Routes``
 - ``RouteGroup``
 - ``ServerRouteGroup``
 - ``APIRoutes``
 
-### ミドルウェア
+### Middleware and CORS
 
+- <doc:Middleware>
 - ``ServerMiddleware``
 - ``CORSServerMiddleware``
 - ``CORSConfiguration``
-- <doc:Middleware>
 
-### リクエスト／レスポンス
+### Authentication and identity
+
+- <doc:Authentication>
+
+### Requests and Responses
 
 - ``ServerRequest``
 - ``ServerResponse``
-- ``HeaderModifiableResponse``
 - ``DataResponse``
 - ``BasicDataResponse``
 - ``StreamResponse``
 - ``SSEStreamResponse``
+- ``HTTPStatus``
 
-### SSE（Server-Sent Events）
+### Server-Sent Events
 
 - ``SSEEvent``
-- ``SSEEncodingError``
 - ``SSEConstants``
+- ``SSEEncodingError``
 
-### Webhook
+### Webhooks
 
 - ``WebhookRequest``
 - ``RawWebhookRequest``
 - ``WebhookHeaders``
-
-### 認証
-
-- <doc:Authentication>

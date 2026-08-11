@@ -2,20 +2,22 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// マウントされた API のルート群
+/// A mounted service's endpoints, already scoped to its contract group's base path.
 ///
-/// `mount()` で作成され、API エンドポイントの登録を行います。
+/// Returned by `mount(_:)`. Because it conforms to `APIRouteRegistrar`, the `registerAll` method
+/// generated for a contract group takes it directly and registers every endpoint at once:
 ///
-/// `APIRouteRegistrar` に準拠しているため、マクロが生成する
-/// `registerAll()` メソッドを使用できます：
 /// ```swift
 /// FormulaAPI.registerAll(server.routes.mount(formulaService))
 /// ```
+///
+/// Registering by hand with `register(_:handler:)` is equally valid, but nothing checks that the
+/// set is complete — an endpoint left out is simply not served.
 public struct APIRoutes<Group: APIContractGroup, Service: APIService>: APIRouteRegistrar, @unchecked Sendable
 where Service.Group == Group {
     let routes: RoutesBuilder
 
-    /// サービスインスタンス
+    /// The mounted service, so `registerAll` can reach the handlers.
     public let service: Service
 
     init(routes: RoutesBuilder, service: Service) {
@@ -23,7 +25,11 @@ where Service.Group == Group {
         self.service = service
     }
 
-    /// 個別のエンドポイントを登録する
+    /// Registers one endpoint, answering with its JSON-encoded output.
+    ///
+    /// The handler is called with the decoded input and a context reflecting the endpoint's
+    /// authentication requirement; a request that fails that requirement is rejected before the
+    /// handler runs.
     @discardableResult
     public func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,
@@ -33,7 +39,7 @@ where Service.Group == Group {
         return self
     }
 
-    /// EmptyOutput を返すエンドポイントを登録する
+    /// Registers an endpoint with no response body, answering `204 No Content`.
     @discardableResult
     public func register<Endpoint: APIContract>(
         _ endpoint: Endpoint.Type,

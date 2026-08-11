@@ -2,10 +2,10 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// Vapor ResponseをServerResponseとしてラップ
+/// Presents the framework's own response through the abstract interface, without copying it.
 ///
-/// ミドルウェアがVaporのResponseを直接操作できるようにしつつ、
-/// 抽象インターフェースを提供する。ストリーミングレスポンスにも対応。
+/// This is what a handler's response is wrapped in on the way back up the middleware chain, so a
+/// streaming body keeps streaming.
 struct VaporResponse: ServerResponse {
     let response: Response
 
@@ -21,10 +21,11 @@ struct VaporResponse: ServerResponse {
         return result
     }
 
-    /// ヘッダーを追加したレスポンスを返す
+    /// Applies the headers to the wrapped response and returns `self`.
     ///
-    /// VaporのResponseはクラスなので、直接ヘッダーを変更できます。
-    /// ストリーミングボディを保持したまま、ヘッダーを追加します。
+    /// The wrapped response is a reference type, so this mutates in place rather than copying —
+    /// which is what keeps a streaming body intact. The value discarded by a caller that ignores
+    /// the result has been modified all the same.
     func addingHeaders(_ additionalHeaders: [String: String]) -> VaporResponse {
         for (key, value) in additionalHeaders {
             response.headers.replaceOrAdd(name: HTTPHeaders.Name(key), value: value)

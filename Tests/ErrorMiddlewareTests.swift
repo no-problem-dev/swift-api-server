@@ -88,8 +88,8 @@ final class ErrorMiddlewareTests: XCTestCase {
             }
 
         // Send invalid JSON
-        // Note: VaporはJSONパースエラーをAbortErrorとして処理するため、
-        // DecodingErrorではなくVAPOR_ABORTとなる
+        // The framework reports malformed JSON as an abort, not a DecodingError, so the code is
+        // VAPOR_ABORT rather than the middleware's own bad-request code.
         try await app.test(.POST, "/test/items", beforeRequest: { req async throws in
             req.headers.contentType = .json
             req.body = .init(string: "{ invalid json }")
@@ -97,7 +97,7 @@ final class ErrorMiddlewareTests: XCTestCase {
             XCTAssertEqual(res.status, .badRequest)
 
             let error = try res.content.decode(ErrorResponse.self)
-            // VaporのJSONパースエラーはAbortErrorとして処理される
+            // Malformed JSON surfaces as an abort.
             XCTAssertEqual(error.errorCode, "VAPOR_ABORT")
         }
     }

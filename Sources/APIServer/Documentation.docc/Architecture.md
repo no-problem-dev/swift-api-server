@@ -1,112 +1,96 @@
-# アーキテクチャ
+# Architecture
 
-APIServer の設計思想と内部構造。
+Why the web framework is invisible, and what that costs.
 
 ## Overview
 
-APIServer は、アプリケーションコードを Vapor 固有の実装から独立させることを
-目的として設計されている。
+Application code that imports Vapor is coupled to Vapor: its request type appears in handler
+signatures, its middleware protocol in every cross-cutting concern, its `Application` in the
+composition root. This package puts a protocol boundary in the way, so the application depends on
+`APIServer` and `APIServer` alone depends on the framework.
 
-## 設計原則
+## Dependency hiding
 
-### 1. 依存性の隠蔽
-
-Vapor は `Internal/` ディレクトリ内に隠蔽され、公開 API には現れない：
+Vapor is imported with `internal import` in every file that touches it, and every such file lives
+under `Internal/`. Nothing it defines is reachable from a public signature:
 
 ```
 Sources/APIServer/
-├── Core/                    # 公開プロトコル
+├── Core/                     # Public protocols and value types
 │   ├── ServerApplication.swift
 │   ├── ServerEnvironment.swift
+│   ├── ServerLogger.swift
 │   └── HTTPStatus.swift
-├── Internal/                # Vapor 実装（非公開）
+├── Internal/                 # The framework-backed implementations
 │   ├── VaporServerApplication.swift
-│   └── VaporRoutes.swift
+│   ├── APIServerRoutes.swift
+│   ├── VaporMiddlewareAdapter.swift
+│   ├── VaporServerRequest.swift
+│   ├── VaporResponse.swift
+│   └── VaporSSEBuilder.swift
+├── Middleware/ Response/ Routing/ SSE/ Webhook/
 └── ...
 ```
 
-### 2. プロトコル優先
+The boundary is enforced by the compiler rather than by convention: an `internal import` cannot
+leak into a public signature without an error.
 
-すべての抽象化は Swift プロトコルで定義されている：
+## Protocol first
 
-```swift
-public protocol ServerApplication: Sendable {
-    associatedtype Routes: APIServer.Routes
-    var environment: ServerEnvironment { get }
-    var logger: ServerLogger { get }
-    var routes: Routes { get }
+Everything the application talks to is a protocol — ``ServerApplication``, ``Routes``,
+``ServerMiddleware``, ``ServerRequest``, ``ServerResponse``, ``ServerLogger``. Each has exactly one
+conformer here, which is the point: a second conformer is a test double, and a third would be a
+different framework.
 
-    func use(_ middleware: any ServerMiddleware)
-    func run() async throws
-    func shutdown() async throws
-}
+``Server/create(environment:)`` returns `some ServerApplication` rather than `any
+ServerApplication`. That is not stylistic. ``ServerApplication`` has an associated `Routes` type,
+and an existential would make `server.routes` unusable, so the opaque return type is what lets the
+concrete implementation stay hidden while the registrar stays typed.
 
-public protocol ServerMiddleware: Sendable {
-    func handle(
-        request: any ServerRequest,
-        next: @escaping @Sendable (any ServerRequest) async throws -> any ServerResponse
-    ) async throws -> any ServerResponse
-}
-```
+## Sendable throughout
 
-### 3. Sendable 準拠
+Every public type is `Sendable`, and handlers are `@Sendable` closures, so route registration
+compiles under strict concurrency without escape hatches at the call site. The internal types that
+wrap reference-typed framework objects are `@unchecked Sendable`; each states in its own
+documentation why that is sound.
 
-Swift 6 の厳格な並行処理に対応するため、すべての公開型は `Sendable` を採用：
+## Where the abstraction is thinner than it looks
 
-```swift
-public struct HTTPStatus: Sendable, Equatable {
-    public let code: Int
-    public let reasonPhrase: String
-}
+Two consequences are worth knowing before designing around this boundary.
 
-public struct CORSServerMiddleware: ServerMiddleware {
-    // ...
-}
-```
+**Middleware cannot rewrite the request.** ``ServerMiddleware/handle(request:next:)`` takes a
+request and passes one to `next`, but the adapter forwards the original request regardless of what
+was handed to it. A middleware can read, short-circuit, or decorate the response; it cannot change
+what the handler receives.
 
-### 4. ファクトリパターン
+**Path parameters are not visible to middleware.** ``ServerRequest/pathParameters`` is always empty
+in the shipped implementation, because parameters are bound during route dispatch, which happens
+after the chain has run. A middleware that needs the path reads it from
+``ServerRequest/url``.
 
-`Server.create()` による依存性注入を採用：
+Neither limit affects route handlers, which receive decoded inputs and path parameters normally.
 
-```swift
-public enum Server {
-    public static func create(
-        environment: ServerEnvironment = .detect()
-    ) async throws -> VaporServerApplication {
-        try await VaporServerApplication(environment: environment)
-    }
-}
-```
-
-これにより、将来的に異なる実装（Hummingbird 等）への切り替えが容易になる。
-
-## レイヤー構造
+## Layering
 
 ```
 ┌─────────────────────────────────────┐
-│         Application Code            │
-│  (APIContract, Business Logic)      │
+│         Application code            │
+│   (contracts, business logic)       │
 ├─────────────────────────────────────┤
-│          APIServer                  │
-│  (Protocols, Abstractions)          │
+│            APIServer                │
+│    (protocols, value types)         │
 ├─────────────────────────────────────┤
-│         Internal/                   │
-│    (Vapor Implementations)          │
+│         APIServer/Internal          │
+│   (framework-backed conformers)     │
 ├─────────────────────────────────────┤
-│           Vapor                     │
-│   (HTTP Server, Routing, etc.)      │
+│              Vapor                  │
+│   (HTTP server, routing, NIO)       │
 └─────────────────────────────────────┘
 ```
 
-## 将来の拡張性
+## Dependencies
 
-この設計により、以下の拡張が可能：
-
-1. **別の Web フレームワーク**: Hummingbird 等への移行
-2. **サーバーレス**: AWS Lambda、Cloud Functions 対応
-3. **テストダブル**: モック実装によるユニットテスト
-4. **カスタム実装**: 特定のユースケース向けの最適化
-
-## 詳細情報
-
-設計の詳細については、プロジェクトルートの `DESIGN.md` を参照すること。
+| Package | Role |
+|---|---|
+| [swift-api-contract](https://github.com/no-problem-dev/swift-api-contract) | Contract types, `APIService`, and the authentication requirements route registration enforces. Its types *do* appear in public signatures — this is a shared vocabulary, not a hidden dependency. |
+| [vapor](https://github.com/vapor/vapor) | The HTTP server. Imported internally and absent from the public API. |

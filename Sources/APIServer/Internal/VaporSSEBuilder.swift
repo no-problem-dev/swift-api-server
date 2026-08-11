@@ -2,24 +2,29 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// Vapor依存のSSEレスポンス構築ヘルパー
+/// Builds the streaming response and the handler context shared by every SSE route family.
 ///
-/// SSERoutesの各拡張で重複していたbuildSSEResponse/buildContextを統合。
-/// Internal実装としてVapor依存を隠蔽。
+/// The three route extensions registered identical bodies; the framework-specific parts live here
+/// so they exist once.
 enum VaporSSEBuilder {
-    /// SSEレスポンスを構築
+    /// Turns a sequence of events into a streaming response.
     ///
-    /// Swift Forums推奨パターン: bodyを先に作成 → Responseコンストラクタに渡す → ヘッダー設定
+    /// Order matters: the body has to be built before the response, and the headers set after it,
+    /// or the framework replaces the streaming body's headers. See
     /// https://forums.swift.org/t/re-stream-chunked-data-server-sent-events-from-another-web-service-through-the-vapor-endpoint/65375
+    ///
+    /// The stream is consumed on a detached task. If it throws, the error is logged and the body
+    /// is terminated normally, so the client sees a clean end of stream rather than a failure.
     static func buildSSEResponse<S: AsyncSequence & Sendable>(
         from stream: S,
         request: Request
     ) -> Response where S.Element == SSEEvent {
-        // Step 1: bodyを先に作成
+        // Step 1: build the body first.
         let body = Response.Body(stream: { writer in
             Task {
                 do {
-                    // 接続確立のための初期コメント送信
+                    // A comment written immediately flushes the headers, so the client sees
+                    // the connection open without waiting for a first event.
                     let initComment = ": SSE stream initialized\n\n"
                     if let initData = initComment.data(using: .utf8) {
                         _ = writer.write(.buffer(.init(data: initData)))
@@ -42,10 +47,10 @@ enum VaporSSEBuilder {
             }
         })
 
-        // Step 2: Responseをbodyと一緒に作成
+        // Step 2: hand the body to the response.
         let response = Response(status: .ok, body: body)
 
-        // Step 3: ヘッダーを後から設定
+        // Step 3: set the headers last.
         response.headers.replaceOrAdd(name: .contentType, value: SSEConstants.contentType)
         response.headers.replaceOrAdd(name: .cacheControl, value: SSEConstants.cacheControl)
         response.headers.replaceOrAdd(name: .connection, value: SSEConstants.connection)
@@ -54,7 +59,8 @@ enum VaporSSEBuilder {
         return response
     }
 
-    /// リクエストからServiceContextを構築
+    /// Reads the identity an earlier middleware established, yielding `.anonymous` if there is
+    /// none. SSE routes never reject on their own — the handler decides.
     static func buildContext(from request: Request) -> ServiceContext {
         if let userId = request.auth.get(AuthenticatedUser.self)?.id {
             return .authenticated(userId: userId)
@@ -62,7 +68,7 @@ enum VaporSSEBuilder {
         return .anonymous
     }
 
-    /// リクエストボディをデコード
+    /// Decodes a request body as JSON with ISO 8601 dates and key names taken as written.
     static func decodeBody<T: Decodable>(_ type: T.Type, from request: Request) throws -> T {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

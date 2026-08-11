@@ -1,12 +1,12 @@
 internal import Vapor
 import APIContract
 
-/// 認証ミドルウェア
+/// Verifies a Bearer token and attaches the resulting user identity to the request.
 ///
-/// `AuthenticationProvider`を使用してBearerトークンを検証し、
-/// 認証済みユーザーをリクエストに設定します。
-///
-/// 使用方法: `server.useAuth(provider)` を呼び出してください。
+/// This middleware never rejects a request. A missing header, a header that is not `Bearer`, and
+/// a token the provider refuses all leave the request unauthenticated and continue down the chain;
+/// the per-endpoint `auth` requirement is what turns that into `401`. Installed by
+/// `ServerApplication.useAuth(_:)`.
 struct AuthMiddleware<Provider: AuthenticationProvider>: AsyncMiddleware {
     private let provider: Provider
 
@@ -15,19 +15,19 @@ struct AuthMiddleware<Provider: AuthenticationProvider>: AsyncMiddleware {
     }
 
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
-        // Authorizationヘッダーからトークンを抽出
+        // The scheme is matched case-insensitively, but the token is taken from the original
+        // header so its casing survives.
         if let authHeader = request.headers[.authorization].first,
            authHeader.lowercased().hasPrefix("bearer ") {
             let token = String(authHeader.dropFirst("bearer ".count))
 
             do {
                 let userId = try await provider.verifyToken(token)
-                // Vapor標準の認証機構を使用
                 request.auth.login(AuthenticatedUser(id: userId))
                 request.logger.debug("Authenticated user: \(userId)")
             } catch {
-                // 認証失敗をログに記録するが、次のハンドラーに処理を渡す
-                // エンドポイントのAuthRequirementで認証チェックが行われる
+                // Log and continue: the endpoint's auth requirement decides whether an
+                // unauthenticated request is acceptable.
                 request.logger.warning("Token verification failed: \(error)")
             }
         }

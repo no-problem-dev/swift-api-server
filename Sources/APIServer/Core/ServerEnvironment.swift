@@ -1,15 +1,16 @@
 import Foundation
 
-/// サーバー実行環境
+/// The deployment mode a server runs in, decided once at creation and never re-read afterwards.
 public enum ServerEnvironment: String, Sendable {
     case development
     case testing
     case production
 
-    /// 環境変数から実行環境を検出する。
+    /// Reads the environment from the process environment.
     ///
-    /// `SWIFT_ENV` または `VAPOR_ENV` 環境変数を参照する。
-    /// 両方とも未設定の場合は `.development` を返す。
+    /// `SWIFT_ENV` wins over `VAPOR_ENV`. The value is lowercased before matching, and anything
+    /// unrecognized — including both variables being unset — falls back to `.development`,
+    /// so a typo in the variable silently yields a development server.
     public static func detect() -> ServerEnvironment {
         if let env = ProcessInfo.processInfo.environment["SWIFT_ENV"] ??
                      ProcessInfo.processInfo.environment["VAPOR_ENV"] {
@@ -18,19 +19,19 @@ public enum ServerEnvironment: String, Sendable {
         return .development
     }
 
-    /// 開発環境かどうか
+    /// Whether this is `.development`.
     public var isDevelopment: Bool { self == .development }
 
-    /// テスト環境かどうか
+    /// Whether this is `.testing`.
     public var isTesting: Bool { self == .testing }
 
-    /// 本番環境かどうか
+    /// Whether this is `.production`.
     public var isProduction: Bool { self == .production }
 
-    /// 環境変数を取得
+    /// Reads an arbitrary environment variable of the current process.
     ///
-    /// - Parameter key: 環境変数のキー
-    /// - Returns: 環境変数の値、存在しない場合は nil
+    /// - Parameter key: The variable name.
+    /// - Returns: The value, or `nil` when the variable is unset.
     public static func get(_ key: String) -> String? {
         ProcessInfo.processInfo.environment[key]
     }

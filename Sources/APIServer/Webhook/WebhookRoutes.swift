@@ -3,15 +3,15 @@ internal import Vapor
 
 // MARK: - Webhook Request
 
-/// Webhook リクエストコンテキスト
+/// A webhook delivery: the decoded body plus the headers it arrived with.
 ///
-/// Webhook エンドポイントで使用するリクエスト情報をカプセル化します。
-/// ボディとヘッダーの両方にアクセスできます。
+/// Headers matter here more than on an ordinary route — event carriers put the event type,
+/// delivery ID and signature there rather than in the payload.
 public struct WebhookRequest<Body: Decodable & Sendable>: Sendable {
-    /// デコードされたリクエストボディ
+    /// The body, decoded from JSON with `snake_case` keys converted to camel case.
     public let body: Body
 
-    /// HTTPヘッダー
+    /// The headers the delivery arrived with.
     public let headers: WebhookHeaders
 
     init(body: Body, headers: WebhookHeaders) {
@@ -20,14 +20,15 @@ public struct WebhookRequest<Body: Decodable & Sendable>: Sendable {
     }
 }
 
-/// 生バイナリデータ用の Webhook リクエストコンテキスト
+/// A webhook delivery whose body is handed over exactly as it arrived.
 ///
-/// Protobuf などの非JSON形式のリクエストボディを扱うために使用します。
+/// For payloads that are not JSON, such as Protobuf, and for any payload whose signature must be
+/// verified over the bytes the sender signed rather than a re-encoding of them.
 public struct RawWebhookRequest: Sendable {
-    /// 生のリクエストボディデータ
+    /// The body bytes, unparsed. `Content-Type` is not consulted.
     public let data: Data
 
-    /// HTTPヘッダー
+    /// The headers the delivery arrived with.
     public let headers: WebhookHeaders
 
     init(data: Data, headers: WebhookHeaders) {
@@ -36,9 +37,10 @@ public struct RawWebhookRequest: Sendable {
     }
 }
 
-/// Webhook ヘッダー
+/// The headers of a webhook delivery, looked up without regard to case.
 ///
-/// HTTPヘッダーへの読み取りアクセスを提供します。
+/// Names are lowercased on the way in, so `"CE-Type"` and `"ce-type"` find the same value. A
+/// header sent more than once keeps only its last value.
 public struct WebhookHeaders: Sendable {
     private let storage: [String: String]
 
@@ -50,17 +52,21 @@ public struct WebhookHeaders: Sendable {
         self.storage = dict
     }
 
-    /// ヘッダー値を取得（大文字小文字を区別しない）
+    /// Returns a header's value, or `nil` if it was not sent.
+    ///
+    /// - Parameter name: The header name, in any case.
     public subscript(_ name: String) -> String? {
         storage[name.lowercased()]
     }
 
-    /// ヘッダーが存在するかチェック
+    /// Reports whether a header was sent, regardless of its value.
+    ///
+    /// - Parameter name: The header name, in any case.
     public func contains(_ name: String) -> Bool {
         storage[name.lowercased()] != nil
     }
 
-    /// 全ヘッダーを取得
+    /// Every header, keyed by lowercased name.
     public var all: [String: String] {
         storage
     }
@@ -69,26 +75,30 @@ public struct WebhookHeaders: Sendable {
 // MARK: - Webhook Route Extensions for VaporServerApplication
 
 extension VaporServerApplication {
-    /// Webhook POSTルートを登録
+    /// Registers a POST route for webhook deliveries, answering with a bare status.
     ///
-    /// リクエストボディとヘッダーの両方にアクセスできるエンドポイントを登録します。
-    /// Eventarc や他のWebhookサービスからのイベント受信に使用します。
+    /// The body is decoded as JSON with `snake_case` keys converted to camel case — the convention
+    /// most event carriers use, and deliberately different from the ISO 8601, verbatim-key decoding
+    /// applied to contract endpoints. A delivery with an empty body is rejected with `400` before
+    /// the handler runs.
     ///
-    /// ## 使用例
+    /// The response carries the returned status and no body, so senders that retry on non-2xx can
+    /// be told to stop by returning `.ok` even when the event was ignored.
+    ///
+    /// ## Example
     /// ```swift
     /// server.webhook("webhooks", "auth", "user-created", body: AuthEvent.self) { request in
     ///     let event = request.body
     ///     let eventType = request.headers["ce-type"]
-    ///     // イベント処理...
+    ///     // Handle the event…
     ///     return .ok
     /// }
     /// ```
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - body: デコードするボディの型
-    ///   - handler: WebhookRequest を受け取り HTTPStatus を返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - body: The type to decode the delivery into.
+    ///   - handler: Handles the delivery and returns the status to answer with.
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(
         _ path: String...,
@@ -104,15 +114,16 @@ extension VaporServerApplication {
         return self
     }
 
-    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    /// Registers a webhook route that answers `200 OK` with a JSON body.
     ///
-    /// リクエストボディとヘッダーにアクセスし、レスポンスボディを返すエンドポイント。
+    /// For senders that expect a payload back, such as a challenge response during endpoint
+    /// verification. The status is always `200`; return a status from the other overload instead
+    /// when it needs to vary.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - body: デコードするボディの型
-    ///   - handler: WebhookRequest を受け取りレスポンスを返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - body: The type to decode the delivery into.
+    ///   - handler: Handles the delivery and returns the value to encode as the response.
     @discardableResult
     public func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
         _ path: String...,
@@ -128,14 +139,15 @@ extension VaporServerApplication {
         return self
     }
 
-    /// Webhook POSTルートを登録（生バイナリデータ）
+    /// Registers a webhook route that hands the handler the body bytes as sent.
     ///
-    /// Protobuf などの非JSON形式のリクエストボディを受け取るエンドポイント。
+    /// Nothing is parsed and `Content-Type` is ignored, which is what makes Protobuf payloads and
+    /// signature verification possible — verify the signature over these exact bytes. An empty
+    /// body is still rejected with `400`.
     ///
     /// - Parameters:
-    ///   - path: パスコンポーネント
-    ///   - handler: RawWebhookRequest を受け取り HTTPStatus を返すハンドラー
-    /// - Returns: Self（メソッドチェーン用）
+    ///   - path: The path components to serve.
+    ///   - handler: Handles the delivery and returns the status to answer with.
     @discardableResult
     public func webhookRaw(
         _ path: String...,
@@ -154,7 +166,7 @@ extension VaporServerApplication {
 // MARK: - Webhook Route Extensions for APIServerRoutes
 
 extension APIServerRoutes {
-    /// Webhook POSTルートを登録
+    /// Registers a POST route for webhook deliveries, answering with a bare status.
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(
         _ path: String...,
@@ -170,7 +182,7 @@ extension APIServerRoutes {
         return self
     }
 
-    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    /// Registers a webhook route that answers `200 OK` with a JSON body.
     @discardableResult
     public func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
         _ path: String...,
@@ -186,7 +198,7 @@ extension APIServerRoutes {
         return self
     }
 
-    /// Webhook POSTルートを登録（生バイナリデータ）
+    /// Registers a webhook route that hands the handler the body bytes as sent.
     @discardableResult
     public func webhookRaw(
         _ path: String...,
@@ -205,7 +217,7 @@ extension APIServerRoutes {
 // MARK: - Webhook Route Extensions for APIServerRouteGroup
 
 extension APIServerRouteGroup {
-    /// Webhook POSTルートを登録
+    /// Registers a POST route for webhook deliveries, answering with a bare status.
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(
         _ path: String...,
@@ -221,7 +233,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    /// Registers a webhook route that answers `200 OK` with a JSON body.
     @discardableResult
     public func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
         _ path: String...,
@@ -237,7 +249,7 @@ extension APIServerRouteGroup {
         return self
     }
 
-    /// Webhook POSTルートを登録（生バイナリデータ）
+    /// Registers a webhook route that hands the handler the body bytes as sent.
     @discardableResult
     public func webhookRaw(
         _ path: String...,
@@ -256,7 +268,7 @@ extension APIServerRouteGroup {
 // MARK: - Webhook Route Extensions for ServerRouteGroup
 
 extension ServerRouteGroup {
-    /// Webhook POSTルートを登録
+    /// Registers a POST route for webhook deliveries, answering with a bare status.
     @discardableResult
     public func webhook<Body: Decodable & Sendable>(
         _ path: String...,
@@ -272,7 +284,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// Webhook POSTルートを登録（レスポンスボディ付き）
+    /// Registers a webhook route that answers `200 OK` with a JSON body.
     @discardableResult
     public func webhook<Body: Decodable & Sendable, Response: Encodable & Sendable>(
         _ path: String...,
@@ -288,7 +300,7 @@ extension ServerRouteGroup {
         return self
     }
 
-    /// Webhook POSTルートを登録（生バイナリデータ）
+    /// Registers a webhook route that hands the handler the body bytes as sent.
     @discardableResult
     public func webhookRaw(
         _ path: String...,

@@ -10,7 +10,8 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
         let serverRequest = VaporServerRequest(request: request)
 
         let serverResponse = try await middleware.handle(request: serverRequest) { _ in
-            // 次のミドルウェア/ハンドラーを呼び出し
+            // The request the middleware passes in is discarded: the original request continues
+            // down the chain, so a middleware cannot rewrite what the handler sees.
             let response = try await next.respond(to: request)
             return VaporResponse(response: response)
         }
@@ -18,20 +19,22 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
         return Self.toVaporResponse(serverResponse)
     }
 
-    /// 抽象 `ServerResponse` を、実際に送出される Vapor の `Response` に落とす。
+    /// Lowers an abstract response to the one that is actually written.
     ///
-    /// ミドルウェアが `addingHeaders` で足したヘッダーがここを通り抜けられないと、
-    /// CORS 等が無言で消える。`respond` に埋め込まず切り出してあるのはテストのため。
+    /// Every case has to carry over the headers a middleware added, or CORS and friends vanish
+    /// without a trace. Split out of `respond` so it can be tested directly.
+    ///
+    /// A response that is none of the three recognized shapes — an `SSEStreamResponse`, for
+    /// instance — reaches the client as headers with an empty body.
     static func toVaporResponse(_ serverResponse: any ServerResponse) -> Response {
-        // VaporResponseの場合、元のVapor Responseを返す
-        // これによりストリーミングボディが保持される
+        // Return the original object so a streaming body survives; its headers were already
+        // mutated in place by `addingHeaders`.
         if let vaporResponse = serverResponse as? VaporResponse {
             return vaporResponse.response
         }
 
-        // AnyStreamResponseの場合、内部のVapor Responseを返す。
-        // ミドルウェアが addingHeaders で足したヘッダーは snapshot 側にしか無いので、
-        // 実際に送出される underlying へ反映してから返す。
+        // Here the added headers live only on the snapshot, so copy them onto the object that
+        // will be written.
         if let anyStream = serverResponse as? AnyStreamResponse,
            let vaporResponse = anyStream.underlyingResponse as? Response {
             for (name, value) in anyStream.headers {
@@ -40,7 +43,6 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
             return vaporResponse
         }
 
-        // BasicDataResponseなどの場合は変換
         if let dataResponse = serverResponse as? DataResponse {
             var headers = HTTPHeaders()
             for (key, value) in dataResponse.headers {
@@ -53,7 +55,6 @@ struct VaporMiddlewareAdapter: AsyncMiddleware {
             )
         }
 
-        // その他の場合はヘッダーのみ変換（ボディは空）
         var headers = HTTPHeaders()
         for (key, value) in serverResponse.headers {
             headers.add(name: key, value: value)

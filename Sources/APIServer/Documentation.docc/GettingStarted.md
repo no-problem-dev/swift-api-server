@@ -1,54 +1,34 @@
-# はじめに
+# Getting Started
 
-APIServer を使って Vapor ベースのサーバーを構築する基本的な方法。
+Stand up a server, register routes, and mount a contract service.
 
 ## Overview
 
-APIServer は、Vapor ウェブフレームワークをラップしてアプリケーションコードから
-Vapor 固有の実装を隠蔽するライブラリ。
+This walks through the pieces in the order you meet them. It assumes the package is already a
+dependency; see the README for the SwiftPM snippet.
 
-## インストール
+## Creating a server
 
-### Swift Package Manager
-
-`Package.swift` に以下を追加する：
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/no-problem-dev/swift-api-server.git", from: "1.0.0")
-]
-```
-
-ターゲットに追加：
-
-```swift
-.target(
-    name: "YourTarget",
-    dependencies: [
-        .product(name: "APIServer", package: "swift-api-server")
-    ]
-)
-```
-
-## 基本的な使い方
-
-### サーバーの作成
-
-`Server.create()` は非同期なので `async` コンテキストから呼び出す：
+``Server/create(environment:)`` is asynchronous because the underlying server allocates its event
+loops up front, so call it from an `async` context:
 
 ```swift
 import APIServer
 
-// 環境を自動検出してサーバーを作成
+// Reads SWIFT_ENV, then VAPOR_ENV, falling back to .development
 let server = try await Server.create()
 
-// または明示的に環境を指定
-let server = try await Server.create(environment: .development)
+// Or state the environment outright
+let server = try await Server.create(environment: .production)
 ```
 
-### ルートの登録
+The environment is decided once, here. Detection is forgiving to a fault: an unrecognized value —
+including a misspelling of `production` — yields `.development` with no warning.
 
-クロージャの戻り値は自動的に JSON エンコードされる：
+## Registering routes
+
+A handler returns an `Encodable` value, not a response. It is JSON-encoded with ISO 8601 dates and
+answered as `200 OK`:
 
 ```swift
 // GET /health
@@ -56,7 +36,7 @@ server.get("health") {
     ["status": "healthy"]
 }
 
-// GET /users/:id（パスパラメータはルートパターンで指定）
+// GET /users/:id — the pattern declares the parameter
 server.get("users", ":id") {
     UserOutput(id: 1, name: "Alice")
 }
@@ -67,9 +47,26 @@ server.post("items") {
 }
 ```
 
-### ルートグループ
+These plain routes cannot read the path parameter they declare; that is what contract endpoints are
+for. Use them for fixed paths — health checks, readiness probes, version stamps.
 
-共通プレフィックスを持つルートはグループ化できる：
+To see who is calling, take a `ServiceContext`:
+
+```swift
+server.get("me") { context in
+    guard case .authenticated(let userId) = context else {
+        throw HTTPError.unauthorized
+    }
+    return try await fetchProfile(userId)
+}
+```
+
+Nothing enforces authentication for a plain route — the context is `.anonymous` when no token was
+verified, and rejecting is the handler's job.
+
+## Grouping routes
+
+A group prefixes everything registered on it, and groups nest:
 
 ```swift
 let v1 = server.group("api", "v1")
@@ -83,33 +80,51 @@ v1.post("echo") {
 }
 ```
 
-### APIService を使ったルーティング
+``ServerRouteGroup`` — what `server.group(_:)` returns — covers GET, POST, SSE and webhook routes,
+but not PUT, DELETE or PATCH, and it cannot mount a service. For those, group from the registrar
+instead: `server.routes.group("api", "v1")`.
 
-`APIContract` を使った型安全なルーティング。
-`APIService` を実装したサービスを `routes.mount(_:)` で登録する：
+## Mounting a contract service
+
+Contract endpoints are where inputs get decoded, path parameters get bound and authentication gets
+enforced, all from the contract rather than from handler code:
 
 ```swift
 import APIServer
 import APIContract
 
-// APIService の実装
 struct UserService: APIService {
     typealias Group = UserAPIGroup
 }
 
-// マウントして registerAll で一括登録
-let service = UserService()
-UserAPIGroup.registerAll(server.routes.mount(service))
+UserAPIGroup.registerAll(server.routes.mount(UserService()))
 ```
 
-### サーバーの起動
+`mount(_:)` scopes the service to its group's base path but serves nothing on its own — the
+endpoints still have to be registered. `registerAll` is generated from the contract and covers all
+of them; registering by hand with `register(_:handler:)` works too, but nothing checks that the set
+is complete, and an endpoint left out is simply not served.
+
+## Adding middleware
+
+Middleware runs in registration order — first added sees the request first and the response last:
+
+```swift
+server.use(CORSServerMiddleware())
+server.useAuth(MyAuthProvider())
+server.useErrorMiddleware()
+```
+
+## Running
 
 ```swift
 try await server.run()
 ```
 
-## 次のステップ
+`run()` suspends until the server stops. Call `shutdown()` to stop it from elsewhere.
 
-- <doc:Middleware>: ミドルウェアの設定方法
-- <doc:Authentication>: 認証の実装方法
-- <doc:Architecture>: 設計思想の詳細
+## Next steps
+
+- <doc:Middleware>: the built-in middleware and how to write your own
+- <doc:Authentication>: verifying tokens and reading identity in handlers
+- <doc:Architecture>: what the abstraction buys, and where it is thinner than it looks

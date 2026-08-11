@@ -2,21 +2,19 @@ import Foundation
 internal import Vapor
 import APIContract
 
-/// Vaporベースのサーバーアプリケーション実装
+/// The server implementation behind `Server.create()`.
+///
+/// Kept internal so the web framework it wraps never appears in the package's public API.
 final class VaporServerApplication: ServerApplication, @unchecked Sendable {
-    /// 内部Vaporアプリケーション
     let app: Application
 
-    /// サーバー環境
     let environment: ServerEnvironment
 
-    /// ロガー
     var logger: ServerLogger { VaporLogger(logger: app.logger) }
 
-    /// ルート登録インターフェース
+    /// A fresh registrar each time; the routes it registers all land on the same application.
     var routes: APIServerRoutes { APIServerRoutes(app: app) }
 
-    /// 初期化
     init(environment: ServerEnvironment = .detect()) async throws {
         let vaporEnv: Vapor.Environment
         switch environment {
@@ -32,47 +30,48 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
         self.app = try await Application.make(vaporEnv)
     }
 
-    /// ミドルウェアを追加（抽象化された ServerMiddleware）
+    /// Appends a middleware, wrapped so the framework can drive it.
     func use(_ middleware: any ServerMiddleware) {
         app.middleware.use(VaporMiddlewareAdapter(middleware: middleware, logger: app.logger))
     }
 
-    /// 認証ミドルウェアを追加
+    /// Installs Bearer-token authentication, which annotates requests but never rejects them.
     ///
-    /// - Parameter provider: 認証プロバイダー
+    /// - Parameter provider: Verifies a token and returns the user ID it identifies.
     func useAuth<P: AuthenticationProvider>(_ provider: P) {
         app.middleware.use(AuthMiddleware(provider: provider))
     }
 
-    /// APIContractエラーミドルウェアを追加
+    /// Installs the middleware that turns thrown errors into JSON error responses.
     ///
-    /// APIContractError を JSON エラーレスポンスに変換する。
+    /// It only catches what is thrown after it, so register it before the routes it should cover.
     func useErrorMiddleware() {
         app.middleware.use(APIContractErrorMiddleware())
     }
 
-    /// 最大リクエストボディサイズを設定する。
+    /// Sets the maximum accepted request body size.
     ///
-    /// デフォルトは 16 KB。大きなファイルアップロードを受け付ける場合は増やす。
-    /// - Parameter bytes: 最大バイト数
+    /// Applies to routes registered afterwards. The default is small — on the order of tens of
+    /// kilobytes — so uploads need this raised.
+    ///
+    /// - Parameter bytes: The limit in bytes.
     func setMaxBodySize(_ bytes: Int) {
         app.routes.defaultMaxBodySize = ByteCount(value: bytes)
     }
 
-    /// 最大リクエストボディサイズを設定（文字列指定）
+    /// Sets the maximum accepted request body size from a size literal such as `"10mb"`.
     ///
-    /// 例: "10mb", "500kb", "1gb"
-    /// - Parameter size: サイズ文字列
+    /// - Parameter size: A count with a unit suffix: `"500kb"`, `"10mb"`, `"1gb"`.
     func setMaxBodySize(_ size: String) {
         app.routes.defaultMaxBodySize = ByteCount(stringLiteral: size)
     }
 
-    /// サーバーを実行
+    /// Starts serving and suspends until the server stops.
     func run() async throws {
         try await app.execute()
     }
 
-    /// サーバーをシャットダウン
+    /// Stops the server and releases its event loops.
     func shutdown() async throws {
         try await app.asyncShutdown()
     }
@@ -85,7 +84,7 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
 
     // MARK: - Simple Route Registration
 
-    /// シンプルなGETルートを登録（コンテキスト不要）
+    /// Registers a GET route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -99,7 +98,7 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
         return self
     }
 
-    /// シンプルなPOSTルートを登録（コンテキスト不要）
+    /// Registers a POST route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -115,7 +114,8 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
 
     // MARK: - Context-Aware Route Registration
 
-    /// コンテキスト付きGETルートを登録
+    /// Registers a GET route whose handler receives the caller's identity, `.anonymous` when the
+    /// request is unauthenticated.
     @discardableResult
     func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -130,7 +130,8 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
         return self
     }
 
-    /// コンテキスト付きPOSTルートを登録
+    /// Registers a POST route whose handler receives the caller's identity, `.anonymous` when the
+    /// request is unauthenticated.
     @discardableResult
     func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -147,7 +148,7 @@ final class VaporServerApplication: ServerApplication, @unchecked Sendable {
 
     // MARK: - Route Grouping
 
-    /// ルートグループを作成
+    /// Creates a group that prefixes every route registered on it with the given path.
     func group(_ path: String...) -> ServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return ServerRouteGroup(routes: app.grouped(components))

@@ -1,12 +1,12 @@
 import Foundation
 internal import Vapor
 
-/// `Encodable` を JSON ボディの `Vapor.Response` にする唯一の変換点。
+/// The single place an `Encodable` becomes a JSON response.
 ///
-/// 同じ「エンコード → Content-Type 付与 → Response 生成」の 4 行が、ルート登録の各所に
-/// 16 箇所複製されていた（`VaporServerApplication` には同一実装の private メソッドが
-/// static / instance の 2 つ並存していた）。エンコーダ設定やヘッダを変える理由は 1 つなので、
-/// 変更点も 1 つにまとめる。
+/// The same four lines — encode, set the content type, build the response — had been copied to
+/// sixteen route-registration sites, two of them identical private methods on the same type. There
+/// is one reason to change the encoder configuration or the headers, so there is one place to
+/// change them.
 func encodeJSONResponse<T: Encodable>(_ value: T) throws -> Vapor.Response {
     let data = try JSONEncoder.apiDefault.encode(value)
     var headers = HTTPHeaders()

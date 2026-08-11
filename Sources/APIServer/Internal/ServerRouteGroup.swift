@@ -3,11 +3,14 @@ internal import Vapor
 import APIContract
 
 
-/// サーバールートグループ（Vapor非依存インターフェース）
+/// A path-prefixed group of routes, returned by `ServerApplication.group(_:)`.
+///
+/// Unlike `APIServerRouteGroup`, this group offers only GET and POST and cannot mount a
+/// contract service; reach for `routes.group(_:)` when either is needed.
 public struct ServerRouteGroup: @unchecked Sendable {
     let routes: RoutesBuilder
 
-    /// シンプルなGETルートを登録
+    /// Registers a GET route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -21,7 +24,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         return self
     }
 
-    /// シンプルなPOSTルートを登録
+    /// Registers a POST route whose returned value is JSON-encoded and answered as `200 OK`.
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -35,7 +38,8 @@ public struct ServerRouteGroup: @unchecked Sendable {
         return self
     }
 
-    /// コンテキスト付きGETルートを登録
+    /// Registers a GET route whose handler receives the caller's identity, `.anonymous` when the
+    /// request is unauthenticated.
     @discardableResult
     public func get<Response: Encodable & Sendable>(
         _ path: String...,
@@ -50,7 +54,8 @@ public struct ServerRouteGroup: @unchecked Sendable {
         return self
     }
 
-    /// コンテキスト付きPOSTルートを登録
+    /// Registers a POST route whose handler receives the caller's identity, `.anonymous` when the
+    /// request is unauthenticated.
     @discardableResult
     public func post<Response: Encodable & Sendable>(
         _ path: String...,
@@ -65,7 +70,7 @@ public struct ServerRouteGroup: @unchecked Sendable {
         return self
     }
 
-    /// サブグループを作成
+    /// Creates a nested group, prefixed with this group's path and then the given one.
     public func group(_ path: String...) -> ServerRouteGroup {
         let components = path.map { PathComponent(stringLiteral: $0) }
         return ServerRouteGroup(routes: routes.grouped(components))
