@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-08-11
+
 ### Fixed
 
 - An endpoint is now satisfied only by a credential presented where its declared scheme puts it.
