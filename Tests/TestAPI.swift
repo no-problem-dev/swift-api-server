@@ -53,6 +53,26 @@ public enum ProtectedAPI {
     }
 }
 
+// MARK: - API Key Group (credential belongs in a named header)
+
+@APIGroup(path: "api-key-protected", auth: .apiKey(headerName: "x-api-key"))
+public enum APIKeyAPI {
+    @Endpoint(.get, path: "secret")
+    public struct GetSecret {
+        public typealias Output = SecretData
+    }
+}
+
+// MARK: - Query Parameter Group (credential belongs in a named query parameter)
+
+@APIGroup(path: "query-protected", auth: .queryParam(name: "access_token"))
+public enum QueryParamAPI {
+    @Endpoint(.get, path: "secret")
+    public struct GetSecret {
+        public typealias Output = SecretData
+    }
+}
+
 // MARK: - Test Models
 
 public struct TestItem: Content, Equatable, Sendable {
@@ -168,6 +188,24 @@ public struct ProtectedAPIServiceImpl: ProtectedAPIService {
 
     public func handle(_ input: ProtectedAPI.DeleteResource, context: ServiceContext) async throws {
         // Just succeed for testing
+    }
+}
+
+// MARK: - Alternate Scheme Handlers
+
+public struct APIKeyAPIServiceImpl: APIKeyAPIService {
+    public init() {}
+
+    public func handle(_ input: APIKeyAPI.GetSecret, context: ServiceContext) async throws -> SecretData {
+        SecretData(secret: "api-key-secret-value")
+    }
+}
+
+public struct QueryParamAPIServiceImpl: QueryParamAPIService {
+    public init() {}
+
+    public func handle(_ input: QueryParamAPI.GetSecret, context: ServiceContext) async throws -> SecretData {
+        SecretData(secret: "query-param-secret-value")
     }
 }
 

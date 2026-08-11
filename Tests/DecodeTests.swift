@@ -395,7 +395,7 @@ private struct MockAuthMiddleware: AsyncMiddleware {
     let userId: String
 
     func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
-        request.auth.login(AuthenticatedUser(id: userId))
+        request.auth.login(AuthenticatedUser(id: userId, scheme: .bearer))
         return try await next.respond(to: request)
     }
 }

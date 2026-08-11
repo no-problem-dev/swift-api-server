@@ -56,14 +56,20 @@ extension Request {
     /// Derives the handler's context from the endpoint's authentication requirement.
     ///
     /// `.none` passes the identity through when one is present and yields `.anonymous` otherwise.
-    /// Every other requirement demands an identity and throws `HTTPError.unauthorized` without it.
     ///
-    /// All three demanding cases are treated identically: whichever credential the endpoint
-    /// nominates, the identity can only have been established by the Bearer-token middleware,
-    /// which is the sole authenticator shipped here.
+    /// Every other requirement demands an identity **that the same scheme established**. The
+    /// credential has to have arrived where the scheme puts it: a token in the query string does
+    /// not satisfy `.bearer`, and an `Authorization` header does not satisfy `.apiKey` or
+    /// `.queryParam`. Comparing the whole scheme rather than just its case also means an
+    /// `.apiKey(headerName:)` endpoint is satisfied only by the header it names.
+    ///
+    /// `AuthMiddleware` is the only authenticator shipped here and it establishes `.bearer`, so an
+    /// endpoint declaring `.apiKey` or `.queryParam` has nothing that can authenticate it and
+    /// answers `401` until a middleware for that scheme is installed. That is the fail-closed
+    /// direction: a scheme with no authenticator rejects rather than falling back to another one.
     ///
     /// - Throws: `HTTPError.unauthorized` when the endpoint requires authentication and the
-    ///   request carries no verified identity.
+    ///   request carries no identity established by the scheme it declared.
     func buildServiceContext<Endpoint: APIContract>(
         for endpoint: Endpoint.Type
     ) throws -> ServiceContext {
@@ -71,23 +77,32 @@ extension Request {
 
         switch authRequirement {
         case .none:
-            if let userId = self.authenticatedUserId {
-                return .authenticated(userId: userId)
+            if let user = self.authenticatedUser {
+                return .authenticated(userId: user.id)
             }
             return .anonymous
 
         case .bearer, .apiKey, .queryParam:
-            guard let userId = self.authenticatedUserId else {
+            guard let user = self.authenticatedUser, user.scheme == authRequirement else {
                 throw HTTPError.unauthorized
             }
-            return .authenticated(userId: userId)
+            return .authenticated(userId: user.id)
         }
     }
 
     /// The identity established earlier in the middleware chain, or `nil` if the request is
     /// unauthenticated.
+    var authenticatedUser: AuthenticatedUser? {
+        self.auth.get(AuthenticatedUser.self)
+    }
+
+    /// The user ID of that identity, whichever scheme established it.
+    ///
+    /// This is the middleware-facing view, which runs before route dispatch and so has no endpoint
+    /// to compare a scheme against. Endpoint dispatch goes through `buildServiceContext` instead,
+    /// which additionally requires the scheme to match what the endpoint declared.
     var authenticatedUserId: String? {
-        self.auth.get(AuthenticatedUser.self)?.id
+        self.authenticatedUser?.id
     }
 
     /// Encodes a handler's return value as a `200 OK` JSON response.
@@ -108,12 +123,22 @@ extension Request {
 
 // MARK: - Authenticated User
 
-/// The verified identity stored on a request, carrying only the user ID the provider returned.
+/// The verified identity stored on a request: the user ID the provider returned, and the scheme
+/// whose credential proved it.
+///
+/// The scheme is what lets an endpoint refuse a credential presented somewhere it did not
+/// nominate. Without it, every authenticator's result would be interchangeable and any endpoint
+/// would accept a credential from any position.
 struct AuthenticatedUser: Authenticatable, Sendable {
     let id: String
 
-    init(id: String) {
+    /// Where the credential that proved this identity came from — the scheme the authenticator
+    /// implements, not the scheme any particular endpoint asked for.
+    let scheme: AuthScheme
+
+    init(id: String, scheme: AuthScheme) {
         self.id = id
+        self.scheme = scheme
     }
 }
 

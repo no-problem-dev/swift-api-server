@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- An endpoint is now satisfied only by a credential presented where its declared scheme puts it.
+  A verified identity carries the scheme that proved it, and `buildServiceContext` requires that
+  scheme to equal the one the endpoint declared, header name included. Previously the three
+  authenticated schemes were interchangeable, so an `.apiKey` or `.queryParam` endpoint was let
+  through by an `Authorization: Bearer` header — a credential in a position it never nominated.
+
+  The reverse never happened and does not now: `AuthMiddleware` reads the `Authorization` header
+  and nothing else, so a token in the query string has never authenticated anything. The new tests
+  pin both directions.
+
+  `AuthMiddleware` is still the only authenticator here, and it establishes `.bearer`. An endpoint
+  declaring `.apiKey` or `.queryParam` therefore has nothing that can authenticate it and answers
+  `401` until a middleware for that scheme is installed, rather than falling back to another
+  scheme's credential.
+
 ## [3.0.0] - 2026-08-11
 
 None

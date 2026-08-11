@@ -296,7 +296,7 @@ import Vapor
 
 private struct MockAuthMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
-        request.auth.login(AuthenticatedUser(id: "test-user-123"))
+        request.auth.login(AuthenticatedUser(id: "test-user-123", scheme: .bearer))
         return try await next.respond(to: request)
     }
 }
