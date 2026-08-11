@@ -64,7 +64,7 @@ dependencies: [
 
 | APIServer | Swift | プラットフォーム |
 |---|---|---|
-| 2.x | 6.0+ | macOS 14+ |
+| 2.x | 6.0+ | macOS 14+ · Linux |
 
 ## ライセンス
 

@@ -64,7 +64,7 @@ Then add the product to your target:
 
 | APIServer | Swift | Platforms |
 |---|---|---|
-| 2.x | 6.0+ | macOS 14+ |
+| 2.x | 6.0+ | macOS 14+ · Linux |
 
 ## License
 
