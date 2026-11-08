@@ -36,7 +36,7 @@ try await server.run()
 
 ## Documentation
 
-[API reference and guides](https://no-problem-dev.github.io/swift-api-server/documentation/apiserver/) —
+[API reference and guides](Sources/APIServer/Documentation.docc) —
 including getting started, middleware, authentication, and the architecture behind the abstraction.
 
 ## Installation
