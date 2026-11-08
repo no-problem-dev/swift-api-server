@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-11-08
+
+### Changed
+
+- swift-docc-plugin への依存を外した（DocC は Xcode で開く）
+
 ## [3.0.1] - 2026-08-11
 
 ### Fixed
@@ -219,7 +225,8 @@ routes.webhook("user-created", body: AuthUserCreatedEvent.self) { request in
 - ErrorMiddlewareTests: error handling tests
 - DecodeTests: request parameter decoding tests
 
-[Unreleased]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.2...HEAD
+[Unreleased]: https://github.com/no-problem-dev/swift-api-server/compare/3.0.2...HEAD
+[3.0.2]: https://github.com/no-problem-dev/swift-api-server/compare/3.0.1...3.0.2
 [2.0.2]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/no-problem-dev/swift-api-server/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/no-problem-dev/swift-api-server/compare/v1.0.9...2.0.0
